@@ -1,0 +1,9 @@
+export { Role } from './role.entity';
+export { User } from './user.entity';
+export { Area } from './area.entity';
+export { SubadminArea } from './subadmin-area.entity';
+export { PointOfInterest } from './point-of-interest.entity';
+export { Event } from './event.entity';
+export { News } from './news.entity';
+export { Statistic } from './statistic.entity';
+export { AuditLog } from './audit-log.entity';
