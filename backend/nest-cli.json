@@ -1,0 +1,12 @@
+{
+    "collection": "@nestjs/schematics",
+    "sourceRoot": "src",
+    "compilerOptions": {
+        "assets": [
+            "**/*.json"
+        ],
+        "watchAssets": true,
+        "deleteOutDir": true,
+        "webpack": true
+    }
+}

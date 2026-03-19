@@ -1,0 +1,723 @@
+/* ============================================
+   CAMPUS VIEWER — Visualización Interactiva 3D
+   ============================================ */
+
+.campus-viewer {
+    width: 100%;
+    min-height: 520px;
+    background: linear-gradient(160deg, #0d1117 0%, #161b27 50%, #0d1117 100%);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Header ─── */
+.viewer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.viewer-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.viewer-title h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e6edf3;
+    letter-spacing: 0.02em;
+}
+
+.viewer-status-dot {
+    width: 8px;
+    height: 8px;
+    background: #3fb950;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #3fb950;
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.3);
+    }
+}
+
+.viewer-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: #8b949e;
+}
+
+.viewer-stats span {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Body ─── */
+.viewer-body {
+    display: flex;
+    flex: 1;
+    min-height: 400px;
+}
+
+/* ─── Campus Map ─── */
+.campus-map {
+    position: relative;
+    flex: 1;
+    min-height: 400px;
+    overflow: hidden;
+}
+
+.map-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+.map-zones {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.zone-blob {
+    position: absolute;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    filter: blur(20px);
+    transition: opacity 0.3s;
+}
+
+.connection-lines {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.map-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.center-logo {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    box-shadow: 0 0 20px rgba(100, 150, 255, 0.15);
+}
+
+.map-center span {
+    font-size: 0.65rem;
+    color: #8b949e;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* ─── Map Points ─── */
+.map-point {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid var(--point-color, #8884d8);
+    background: rgba(13, 17, 23, 0.85);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 0 0 0 var(--point-color, #8884d8);
+}
+
+.map-point:hover {
+    transform: translate(-50%, -50%) scale(1.25);
+    box-shadow: 0 0 12px var(--point-color, #8884d8);
+    border-width: 2px;
+    z-index: 20;
+}
+
+.map-point.selected {
+    transform: translate(-50%, -50%) scale(1.3);
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.1), 0 0 16px var(--point-color, #8884d8);
+    z-index: 20;
+    background: rgba(30, 30, 50, 0.95);
+}
+
+.point-icon {
+    font-size: 1rem;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+}
+
+.point-pulse {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 1.5px solid var(--point-color, #8884d8);
+    opacity: 0;
+    animation: pulse-ring 2.5s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.85);
+        opacity: 0.6;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* ─── Sidebar ─── */
+.viewer-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.07);
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* ─── Points List Panel ─── */
+.points-list-panel {
+    padding: 16px;
+}
+
+.points-list-panel h4 {
+    margin: 0 0 6px;
+    color: #e6edf3;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.list-hint {
+    color: #8b949e;
+    font-size: 0.75rem;
+    margin: 0 0 12px;
+    line-height: 1.4;
+}
+
+.points-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.points-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: 1px solid transparent;
+}
+
+.points-list-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.list-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.points-list-item strong {
+    display: block;
+    color: #e6edf3;
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+.list-category {
+    font-size: 0.7rem;
+    font-weight: 500;
+    display: block;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ─── Point Info Panel ─── */
+.point-info-panel {
+    padding: 16px;
+    animation: slide-in 0.2s ease-out;
+}
+
+@keyframes slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.info-panel-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: 12px;
+}
+
+.info-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.info-panel-header h3 {
+    margin: 0 0 2px;
+    color: #e6edf3;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.3;
+    flex: 1;
+}
+
+.info-category {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-close {
+    background: none;
+    border: none;
+    color: #8b949e;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: color 0.2s, background 0.2s;
+}
+
+.info-close:hover {
+    color: #e6edf3;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.info-panel-body p {
+    color: #8b949e;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    margin: 0 0 12px;
+}
+
+.info-meta {
+    font-size: 0.75rem;
+    color: #8b949e;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.info-meta strong {
+    color: #e6edf3;
+}
+
+/* ─── Footer ─── */
+.viewer-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    font-size: 0.73rem;
+    color: #8b949e;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+/* ─── Loading State ─── */
+.campus-viewer.loading-state {
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    min-height: 400px;
+    color: #8b949e;
+    font-size: 0.9rem;
+}
+
+.loader-ring {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #4facfe;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ─── Error State ─── */
+.campus-viewer.error-state,
+.campus-viewer.empty-state {
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 400px;
+    text-align: center;
+    padding: 40px;
+    color: #8b949e;
+}
+
+.error-icon,
+.empty-icon {
+    font-size: 2.5rem;
+}
+
+.campus-viewer.error-state h3,
+.campus-viewer.empty-state h3 {
+    margin: 0;
+    color: #e6edf3;
+    font-size: 1.1rem;
+}
+
+.campus-viewer.error-state p,
+.campus-viewer.empty-state p {
+    margin: 0;
+    font-size: 0.85rem;
+    max-width: 320px;
+}
+
+.btn-retry {
+    margin-top: 8px;
+    padding: 8px 20px;
+    background: rgba(79, 172, 254, 0.15);
+    border: 1px solid rgba(79, 172, 254, 0.3);
+    border-radius: 8px;
+    color: #4facfe;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-retry:hover {
+    background: rgba(79, 172, 254, 0.25);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+    .viewer-body {
+        flex-direction: column;
+    }
+
+    .viewer-sidebar {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+        max-height: 200px;
+    }
+
+    .viewer-footer {
+        flex-direction: column;
+        gap: 4px;
+        text-align: center;
+    }
+
+    .viewer-stats {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+/* ════════════════════════════════════════════
+   COMPACT UNITY VIEWER  (Unity3DPlaceholder)
+   ════════════════════════════════════════════ */
+
+/* Contenedor compacto — 560 px de alto por defecto */
+.unity-viewer-wrapper {
+    position: relative;
+    width: 100%;
+    height: 560px;
+    background: #0a0a1a;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+}
+
+/* En pantalla completa ocupa el 100 % del viewport */
+.unity-viewer-wrapper.unity-fullscreen {
+    border-radius: 0;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Canvas ocupa todo el espacio disponible */
+.unity-canvas {
+    flex: 1;
+    width: 100%;
+    display: block;
+    min-height: 0;
+}
+
+/* ── Barra superior ── */
+.unity-topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.75) 0%, transparent 100%);
+    z-index: 30;
+    pointer-events: none;
+}
+
+.unity-topbar-title {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+
+.unity-fullscreen-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: #fff;
+    font-size: 0.75rem;
+    cursor: pointer;
+    pointer-events: all;
+    transition: background 0.2s, transform 0.15s;
+    backdrop-filter: blur(6px);
+}
+
+.unity-fullscreen-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: scale(1.04);
+}
+
+/* ── Overlays de carga y error ── */
+.unity-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: #0a0a1a;
+    color: #fff;
+    padding: 32px;
+    z-index: 20;
+}
+
+.unity-loading h2,
+.unity-error h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #e6edf3;
+}
+
+/* Spinner */
+.unity-spinner {
+    width: 44px;
+    height: 44px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #66bb6a;
+    border-radius: 50%;
+    animation: unity-spin 0.85s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes unity-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Barra de progreso */
+.unity-progress-track {
+    width: 280px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    overflow: hidden;
+}
+
+.unity-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #2e7d32, #66bb6a);
+    border-radius: 100px;
+    transition: width 0.3s ease;
+}
+
+.unity-progress-label {
+    margin: 0;
+    color: #8b949e;
+    font-size: 0.85rem;
+}
+
+.unity-hint {
+    margin: 0;
+    color: #555;
+    font-size: 0.72rem;
+    text-align: center;
+}
+
+/* Error */
+.unity-error p {
+    color: #aaa;
+    text-align: center;
+    max-width: 400px;
+    margin: 0;
+    font-size: 0.88rem;
+}
+
+.unity-error code {
+    color: #66bb6a;
+    font-family: monospace;
+}
+
+.unity-error-detail {
+    color: #f55 !important;
+    font-size: 0.78rem !important;
+}
+
+/* ── Panel POI ── */
+.unity-poi-panel {
+    position: absolute;
+    top: 52px;
+    right: 16px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #fff;
+    border-radius: 12px;
+    padding: 12px 16px;
+    min-width: 220px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(102, 187, 106, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 25;
+    animation: poi-slide 0.2s ease-out;
+}
+
+@keyframes poi-slide {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.unity-poi-panel span {
+    font-size: 1.2rem;
+}
+
+.unity-poi-panel strong {
+    color: #66bb6a;
+    font-size: 0.9rem;
+}
+
+.unity-poi-panel p {
+    margin: 0;
+    color: #aaa;
+    font-size: 0.78rem;
+}
+
+/* ── HUD de controles ── */
+.unity-hud {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.55);
+    color: #aaa;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 0.72rem;
+    backdrop-filter: blur(6px);
+    white-space: nowrap;
+    z-index: 25;
+    pointer-events: none;
+}
+
+/* ── Responsive: en móvil baja a 340 px ── */
+@media (max-width: 600px) {
+    .unity-viewer-wrapper {
+        height: 340px;
+        border-radius: 8px;
+    }
+}
