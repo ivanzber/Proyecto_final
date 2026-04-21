@@ -65,7 +65,7 @@ export const usersService = {
     },
 
     async getAssignedAreas(userId: number): Promise<any[]> {
-        const response = await api.get(`/users/${userId}/assigned-areas`);
+        const response = await api.get(`/users/${userId}/areas`);
         return response.data;
     },
 };

@@ -74,9 +74,10 @@ const VirtualTour: React.FC = () => {
                         </div>
                         <div className="footer-section">
                             <h3>Navegación</h3>
-                            <p>🖱️ Click en los puntos para más información</p>
-                            <p>⌨️ Usa las flechas para moverte</p>
-                            <p>🔍 Haz zoom con la rueda del mouse</p>
+                            <p>🖱️ Click para activar el canvas</p>
+                            <p>Usa W,A,S,D o para moverte</p>
+                            <p>Q para linerar el mouse</p>
+                            <p>Esc para salir de la pantalla completa</p>
                         </div>
                     </div>
                 </div>

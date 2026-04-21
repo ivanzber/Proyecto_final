@@ -80,7 +80,7 @@
 }
 
 .footer-section h3 {
-    color: var(--accent);
+    color: var(--primary);
     margin-bottom: var(--spacing-md);
 }
 

@@ -9,21 +9,37 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 @ApiTags('events')
 @Controller('events')
 export class EventsController {
-    constructor(private readonly eventsService: EventsService) { }
+    constructor(private readonly eventsService: EventsService) {}
 
     @Post()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN', 'SUBADMIN')
     @ApiBearerAuth('JWT-auth')
-    @ApiOperation({ summary: 'Crear evento' })
+    @ApiOperation({ summary: 'Crear evento (valida conflictos de horario)' })
     create(@Body() createDto: any, @GetUser('userId') userId: number) {
         return this.eventsService.create(createDto, userId);
     }
 
     @Get()
-    @ApiOperation({ summary: 'Listar eventos (público: solo publicados)' })
-    findAll(@Query('isPublished') isPublished?: boolean) {
-        return this.eventsService.findAll(isPublished);
+    @ApiOperation({ summary: 'Listar eventos activos (excluye pasados automáticamente)' })
+    findAll(
+        @Query('isPublished')        isPublished?: boolean,
+        @Query('pointOfInterestId')  pointOfInterestId?: number,
+        @Query('areaId')             areaId?: number,
+    ) {
+        return this.eventsService.findAll(isPublished, pointOfInterestId, areaId);
+    }
+
+    @Get('admin/all')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ADMIN', 'SUBADMIN')
+    @ApiBearerAuth('JWT-auth')
+    @ApiOperation({ summary: 'Listar TODOS los eventos incluyendo pasados (admin)' })
+    findAllAdmin(
+        @Query('pointOfInterestId') pointOfInterestId?: number,
+        @Query('areaId')            areaId?: number,
+    ) {
+        return this.eventsService.findAllAdmin(pointOfInterestId, areaId);
     }
 
     @Get(':id')
@@ -36,7 +52,7 @@ export class EventsController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN', 'SUBADMIN')
     @ApiBearerAuth('JWT-auth')
-    @ApiOperation({ summary: 'Actualizar evento' })
+    @ApiOperation({ summary: 'Actualizar evento (valida conflictos)' })
     update(@Param('id') id: string, @Body() updateDto: any) {
         return this.eventsService.update(+id, updateDto);
     }

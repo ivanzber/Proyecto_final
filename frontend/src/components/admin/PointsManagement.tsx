@@ -201,7 +201,7 @@ const PointsManagement: React.FC = () => {
         <div className="dashboard-content">
             <div className="content-header">
                 <div>
-                    <h1>Puntos de Interés</h1>
+                    <h1>Punto de Interés</h1>
                     <p style={{ color: '#8b949e', margin: '4px 0 0', fontSize: '0.85rem' }}>
                         {points.length} puntos registrados en el campus
                     </p>

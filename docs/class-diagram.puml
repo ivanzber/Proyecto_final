@@ -1,0 +1,187 @@
+@startuml Proyecto_Final_ClassDiagram
+
+!theme materia
+skinparam classFontSize 13
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #E8F4FD
+    BorderColor #2980B9
+    HeaderBackgroundColor #2980B9
+    HeaderFontColor #FFFFFF
+    ArrowColor #2C3E50
+}
+
+title Diagrama de Clases — Proyecto Final (Backend NestJS)
+
+class Role <<Entity>> {
+    + id : number <<PK>>
+    + name : string
+    + description : string
+    + createdAt : Date
+    + updatedAt : Date
+    --
+    + users : User[]
+}
+
+class User <<Entity>> {
+    + id : number <<PK>>
+    + email : string
+    + password : string
+    + firstName : string
+    + lastName : string
+    + roleId : number <<FK>>
+    + isActive : boolean
+    + lastLogin : Date
+    + createdAt : Date
+    + updatedAt : Date
+    --
+    + role : Role
+    + assignedAreas : SubadminArea[]
+    + pointsCreated : PointOfInterest[]
+    + eventsCreated : Event[]
+    + newsCreated : News[]
+    + auditLogs : AuditLog[]
+}
+
+class Area <<Entity>> {
+    + id : number <<PK>>
+    + name : string
+    + code : string
+    + description : string
+    + parentAreaId : number <<FK>>
+    + coordinates : JSON
+    + metadata : JSON
+    + isActive : boolean
+    + createdAt : Date
+    + updatedAt : Date
+    --
+    + parentArea : Area
+    + childAreas : Area[]
+    + pointsOfInterest : PointOfInterest[]
+}
+
+class SubadminArea <<Entity>> {
+    + id : number <<PK>>
+    + userId : number <<FK>>
+    + areaId : number <<FK>>
+    + assignedBy : number <<FK>>
+    + createdAt : Date
+    --
+    + user : User
+    + area : Area
+    + assignedByUser : User
+}
+
+class PointOfInterest <<Entity>> {
+    + id : number <<PK>>
+    + title : string
+    + description : string
+    + areaId : number <<FK>>
+    + category : string
+    + coordinates : JSON
+    + iconUrl : string
+    + images : JSON
+    + additionalInfo : JSON
+    + isVisible : boolean
+    + orderIndex : number
+    + createdBy : number <<FK>>
+    + createdAt : Date
+    + updatedAt : Date
+    --
+    + area : Area
+    + createdByUser : User
+}
+
+class Event <<Entity>> {
+    + id : number <<PK>>
+    + title : string
+    + description : string
+    + areaId : number <<FK>>
+    + pointOfInterestId : number <<FK>>
+    + eventDate : Date
+    + startTime : string
+    + endTime : string
+    + location : string
+    + imageUrl : string
+    + category : string
+    + isPublished : boolean
+    + createdBy : number <<FK>>
+    + createdAt : Date
+    + updatedAt : Date
+    --
+    + area : Area
+    + pointOfInterest : PointOfInterest
+    + createdByUser : User
+}
+
+class News <<Entity>> {
+    + id : number <<PK>>
+    + title : string
+    + summary : string
+    + content : string
+    + areaId : number <<FK>>
+    + featuredImage : string
+    + category : string
+    + isPublished : boolean
+    + isFeatured : boolean
+    + publishDate : Date
+    + createdBy : number <<FK>>
+    + createdAt : Date
+    + updatedAt : Date
+    --
+    + area : Area
+    + createdByUser : User
+}
+
+class AuditLog <<Entity>> {
+    + id : number <<PK>>
+    + userId : number <<FK>>
+    + action : string
+    + entityType : string
+    + entityId : number
+    + oldValues : JSON
+    + newValues : JSON
+    + ipAddress : string
+    + userAgent : string
+    + createdAt : Date
+    --
+    + user : User
+}
+
+class Statistic <<Entity>> {
+    + id : number <<PK>>
+    + eventType : string
+    + entityType : string
+    + entityId : number
+    + userId : number
+    + sessionId : string
+    + metadata : JSON
+    + ipAddress : string
+    + userAgent : string
+    + createdAt : Date
+}
+
+' Relaciones
+Role "1" o-- "0..*" User : tiene >
+
+User "1" o-- "0..*" SubadminArea : asignado a >
+Area "1" o-- "0..*" SubadminArea : contiene >
+User "1" o-- "0..*" SubadminArea : asignó (assignedByUser) >
+
+Area "1" o-- "0..*" PointOfInterest : tiene >
+User "1" o-- "0..*" PointOfInterest : creó >
+
+Area "0..1" o-- "0..*" Event : sede >
+PointOfInterest "0..1" o-- "0..*" Event : lugar >
+User "1" o-- "0..*" Event : creó >
+
+Area "0..1" o-- "0..*" News : relacionada >
+User "1" o-- "0..*" News : creó >
+
+User "1" o-- "0..*" AuditLog : generó >
+
+Area "0..1" o-- "0..*" Area : padre de >
+
+@enduml
