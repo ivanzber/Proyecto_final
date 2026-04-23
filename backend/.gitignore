@@ -35,3 +35,6 @@ coverage/
 # Uploads
 uploads/
 temp/
+
+# Security — generated credential files must never be committed
+hash.txt

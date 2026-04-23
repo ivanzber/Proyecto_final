@@ -14,11 +14,13 @@ INSERT INTO roles (name, description) VALUES
 
 -- ============================================
 -- USUARIO ADMINISTRADOR INICIAL
--- Contraseña: Admin123! (CAMBIAR EN PRODUCCIÓN)
--- Hash bcrypt generado con salt rounds = 10
+-- IMPORTANTE: NO almacenes contraseñas ni hashes en el código fuente.
+-- Para generar el hash, ejecuta el script de utilidad:
+--   ADMIN_PASSWORD=TuContraseñaSegura node backend/generate-hash.js
+-- Luego reemplaza <BCRYPT_HASH_AQUI> con el hash generado antes de ejecutar este script.
 -- ============================================
 INSERT INTO users (email, password, first_name, last_name, role_id) VALUES
-('admin@udec.edu.co', '$2b$10$YMu8U9w3vLo.HqlJaK5rxe6rFY96ZCxvdixWQ5mrpJhpXbn1cKzqe', 'Admin', 'Principal', 2);
+('admin@udec.edu.co', '<BCRYPT_HASH_AQUI>', 'Admin', 'Principal', 2);
 
 -- ============================================
 -- ÁREAS DEL CAMPUS (Ejemplo Universidad de Cundinamarca)
