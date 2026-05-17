@@ -3,6 +3,7 @@ import {
     BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { statisticsService, DashboardStats, AreaVisit, VisitsByDate } from '@/services/statisticsService';
 import { usersService } from '@/services/usersService';
 import { areasService } from '@/services/areasService';
@@ -19,6 +20,8 @@ interface ViewsSummary {
 }
 
 const DashboardHome: React.FC = () => {
+    const navigate = useNavigate();
+
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [mostVisitedAreas, setMostVisitedAreas] = useState<AreaVisit[]>([]);
     const [visitsByDate, setVisitsByDate] = useState<VisitsByDate[]>([]);
@@ -106,7 +109,6 @@ const DashboardHome: React.FC = () => {
             setStats(dashStats);
             statsRef.current = dashStats;
 
-            // Eventos recientes
             const sortedEvents = [...events]
                 .sort((a: any, b: any) =>
                     new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()
@@ -115,7 +117,6 @@ const DashboardHome: React.FC = () => {
             setRecentEvents(sortedEvents);
             recentEventsRef.current = sortedEvents;
 
-            // Noticias recientes
             const sortedNews = [...news]
                 .sort((a: any, b: any) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -201,7 +202,7 @@ const DashboardHome: React.FC = () => {
     th    { background: #2e7d32; color: #fff; padding: 8px 12px; text-align: left; }
     td    { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; }
     tr:nth-child(even) { background: #f9f9f9; }
-    .meta { color: #888; font-size: 12px; margin-bottom: 24px; }
+    .meta  { color: #888; font-size: 12px; margin-bottom: 24px; }
     .badge { background: #e8f5e9; color: #2e7d32; padding: 2px 8px;
              border-radius: 10px; font-size: 11px; font-weight: 600; }
     @media print { body { padding: 20px; } }
@@ -239,13 +240,13 @@ const DashboardHome: React.FC = () => {
                 const vInfo = vs.events.find(v => v.entityId === e.id);
                 const views = vInfo?.views || 0;
                 return `<tr>
-          <td>${e.title}</td>
-          <td>${e.eventDate ? new Date(e.eventDate + 'T00:00:00').toLocaleDateString('es-CO') : '—'}</td>
-          <td>${e.pointOfInterest?.title || e.area?.name || '—'}</td>
-          <td><span class="badge">${e.category || '—'}</span></td>
-          <td>${e.isPublished ? 'Publicado' : 'Borrador'}</td>
-          <td>${views} ${views === 1 ? 'vista' : 'vistas'}</td>
-        </tr>`;
+      <td>${e.title}</td>
+      <td>${e.eventDate ? new Date(e.eventDate + 'T00:00:00').toLocaleDateString('es-CO') : '—'}</td>
+      <td>${e.pointOfInterest?.title || e.area?.name || '—'}</td>
+      <td><span class="badge">${e.category || '—'}</span></td>
+      <td>${e.isPublished ? 'Publicado' : 'Borrador'}</td>
+      <td>${views} ${views === 1 ? 'vista' : 'vistas'}</td>
+    </tr>`;
             }).join('') || '<tr><td colspan="6" style="color:#aaa">Sin eventos</td></tr>'}
   </table>
 
@@ -256,13 +257,13 @@ const DashboardHome: React.FC = () => {
                 const vInfo = vs.news.find(v => v.entityId === n.id);
                 const views = vInfo?.views || 0;
                 return `<tr>
-          <td>${n.title}</td>
-          <td>${n.category || '—'}</td>
-          <td>${n.area?.name || '—'}</td>
-          <td>${n.publishDate || n.createdAt ? new Date(n.publishDate || n.createdAt).toLocaleDateString('es-CO') : '—'}</td>
-          <td>${n.isPublished ? 'Publicado' : 'Borrador'}</td>
-          <td>${views} ${views === 1 ? 'vista' : 'vistas'}</td>
-        </tr>`;
+      <td>${n.title}</td>
+      <td>${n.category || '—'}</td>
+      <td>${n.area?.name || '—'}</td>
+      <td>${n.publishDate || n.createdAt ? new Date(n.publishDate || n.createdAt).toLocaleDateString('es-CO') : '—'}</td>
+      <td>${n.isPublished ? 'Publicado' : 'Borrador'}</td>
+      <td>${views} ${views === 1 ? 'vista' : 'vistas'}</td>
+    </tr>`;
             }).join('') || '<tr><td colspan="6" style="color:#aaa">Sin noticias</td></tr>'}
   </table>
 </body>
@@ -314,7 +315,6 @@ const DashboardHome: React.FC = () => {
         return map[cat] || { bg: '#f5f5f5', color: '#555' };
     };
 
-    // ── Helper: badge de vistas ────────────────────────────────────
     const viewsBadge = (views: number) => (
         <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -329,15 +329,25 @@ const DashboardHome: React.FC = () => {
         </span>
     );
 
-    const thStyle = {
-        textAlign: 'left' as const,
+    const thStyle: React.CSSProperties = {
+        textAlign: 'left',
         padding: '10px 12px',
         color: '#555', fontWeight: 600, fontSize: 13
     };
 
-    const tdStyle = (extra: React.CSSProperties = {}) => ({
+    const tdStyle = (extra: React.CSSProperties = {}): React.CSSProperties => ({
         padding: '11px 12px', ...extra
     });
+
+    // ── Tarjetas con navegación ───────────────────────────────────
+    const cards = [
+        { icon: '👥', label: 'Usuarios', num: stats?.totalUsers || 0, sub: `${stats?.activeUsers || 0} activos`, grad: '#667eea,#764ba2', path: '/admin/users' },
+        { icon: '🏛️', label: 'Áreas', num: stats?.totalAreas || 0, sub: 'del campus', grad: '#f093fb,#f5576c', path: '/admin/areas' },
+        { icon: '📍', label: 'Punto de Interés', num: stats?.totalPoints || 0, sub: 'en el recorrido', grad: '#4facfe,#00f2fe', path: '/admin/points' },
+        { icon: '📅', label: 'Eventos', num: stats?.totalEvents || 0, sub: `${stats?.publishedEvents || 0} publicados`, grad: '#43e97b,#38f9d7', path: '/admin/events' },
+        { icon: '📰', label: 'Noticias', num: stats?.totalNews || 0, sub: `${stats?.publishedNews || 0} publicadas`, grad: '#fa709a,#fee140', path: '/admin/news' },
+        { icon: '🟢', label: 'En el Recorrido', num: activeUsers, sub: 'usuarios ahora', grad: '#11998e,#38ef7d', path: null },
+    ];
 
     return (
         <div className="dashboard-content">
@@ -360,24 +370,45 @@ const DashboardHome: React.FC = () => {
                 </button>
             </div>
 
-            {/* ── Tarjetas ─────────────────────────────────────── */}
+            {/* ── Tarjetas con navegación ───────────────────────── */}
             <div className="stats-grid">
-                {[
-                    { icon: '👥', label: 'Usuarios', num: stats?.totalUsers || 0, sub: `${stats?.activeUsers || 0} activos`, grad: '#667eea,#764ba2' },
-                    { icon: '🏛️', label: 'Áreas', num: stats?.totalAreas || 0, sub: 'del campus', grad: '#f093fb,#f5576c' },
-                    { icon: '📍', label: 'Punto de Interés', num: stats?.totalPoints || 0, sub: 'en el recorrido', grad: '#4facfe,#00f2fe' },
-                    { icon: '📅', label: 'Eventos', num: stats?.totalEvents || 0, sub: `${stats?.publishedEvents || 0} publicados`, grad: '#43e97b,#38f9d7' },
-                    { icon: '📰', label: 'Noticias', num: stats?.totalNews || 0, sub: `${stats?.publishedNews || 0} publicadas`, grad: '#fa709a,#fee140' },
-                    { icon: '🟢', label: 'En el Recorrido', num: activeUsers, sub: 'usuarios ahora', grad: '#11998e,#38ef7d' },
-                ].map(c => (
-                    <div key={c.label} className="stat-card">
-                        <div className="stat-icon" style={{ background: `linear-gradient(135deg,${c.grad})` }}>
+                {cards.map(c => (
+                    <div
+                        key={c.label}
+                        className="stat-card"
+                        onClick={() => c.path && navigate(c.path)}
+                        style={{
+                            cursor: c.path ? 'pointer' : 'default',
+                            transition: 'transform 0.15s, box-shadow 0.15s',
+                        }}
+                        onMouseEnter={e => {
+                            if (!c.path) return;
+                            const el = e.currentTarget as HTMLDivElement;
+                            el.style.transform = 'translateY(-4px)';
+                            el.style.boxShadow = '0 8px 24px rgba(0,0,0,0.13)';
+                        }}
+                        onMouseLeave={e => {
+                            const el = e.currentTarget as HTMLDivElement;
+                            el.style.transform = 'translateY(0)';
+                            el.style.boxShadow = '';
+                        }}
+                    >
+                        <div className="stat-icon"
+                            style={{ background: `linear-gradient(135deg,${c.grad})` }}>
                             {c.icon}
                         </div>
                         <div className="stat-info">
                             <h3>{c.label}</h3>
                             <p className="stat-number">{c.num}</p>
-                            <span className="stat-label">{c.sub}</span>
+                            <span className="stat-label">
+                                {c.sub}
+                                {c.path && (
+                                    <span style={{
+                                        marginLeft: 6, fontSize: 11,
+                                        color: '#aaa', fontWeight: 400
+                                    }}>→</span>
+                                )}
+                            </span>
                         </div>
                     </div>
                 ))}
@@ -432,9 +463,11 @@ const DashboardHome: React.FC = () => {
                         </div>
                     ) : (
                         <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={visitsByDate} margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
+                            <LineChart data={visitsByDate}
+                                margin={{ top: 10, right: 20, left: 0, bottom: 10 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={formatTickDate} />
+                                <XAxis dataKey="date" tick={{ fontSize: 11 }}
+                                    tickFormatter={formatTickDate} />
                                 <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
                                 <Tooltip labelFormatter={formatTooltipDate}
                                     formatter={(v: any) => [`${v} visitas`, 'Visitas']} />
@@ -464,7 +497,9 @@ const DashboardHome: React.FC = () => {
                                 <Pie data={pieData.filter(d => d.value > 0)}
                                     cx="50%" cy="50%" labelLine={false}
                                     label={({ name, percent }) =>
-                                        percent > 0.05 ? `${name}: ${(percent * 100).toFixed(0)}%` : ''}
+                                        percent > 0.05
+                                            ? `${name}: ${(percent * 100).toFixed(0)}%`
+                                            : ''}
                                     outerRadius={100} dataKey="value">
                                     {pieData.map((_, i) => (
                                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -482,13 +517,12 @@ const DashboardHome: React.FC = () => {
             {/* ── Visualizaciones de Contenido ─────────────────── */}
             <div className="chart-card" style={{ marginTop: 24 }}>
 
-                {/* Header */}
                 <div style={{
                     display: 'flex', justifyContent: 'space-between',
                     alignItems: 'center', marginBottom: 24
                 }}>
                     <div>
-                        <h3 style={{ margin: '0 0 4px 0' }}> Visualizaciones de Contenido</h3>
+                        <h3 style={{ margin: '0 0 4px 0' }}>👁️ Visualizaciones de Contenido</h3>
                         <p style={{ margin: 0, fontSize: 13, color: '#888' }}>
                             Usuarios únicos que expandieron cada contenido en el recorrido virtual
                         </p>
@@ -503,19 +537,25 @@ const DashboardHome: React.FC = () => {
                     </button>
                 </div>
 
-                {/* ── Tabla Eventos Vistos ─────────────────────── */}
+                {/* Tabla Eventos Vistos */}
                 <h4 style={{ color: '#2e7d32', marginBottom: 12, fontWeight: 600 }}>
                     📅 Eventos Vistos
                 </h4>
                 {recentEvents.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#bbb', padding: '20px 0', fontSize: 13, marginBottom: 32 }}>
+                    <div style={{
+                        textAlign: 'center', color: '#bbb',
+                        padding: '20px 0', fontSize: 13, marginBottom: 32
+                    }}>
                         <p style={{ margin: 0 }}>Sin eventos registrados</p>
                     </div>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14, marginBottom: 32 }}>
+                    <table style={{
+                        width: '100%', borderCollapse: 'collapse',
+                        fontSize: 14, marginBottom: 32
+                    }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid #f0f0f0', background: '#fafafa' }}>
-                                {['Título', 'Fecha', 'Punto de Interés', 'Categoría', 'Estado', ' Vistas'].map(h => (
+                                {['Título', 'Fecha', 'Punto de Interés', 'Categoría', 'Estado', '👁️ Vistas'].map(h => (
                                     <th key={h} style={thStyle}>{h}</th>
                                 ))}
                             </tr>
@@ -535,9 +575,10 @@ const DashboardHome: React.FC = () => {
                                         </td>
                                         <td style={tdStyle({ color: '#666', fontSize: 13 })}>
                                             {e.eventDate
-                                                ? new Date(e.eventDate + 'T00:00:00').toLocaleDateString('es-CO', {
-                                                    day: '2-digit', month: 'short', year: 'numeric'
-                                                })
+                                                ? new Date(e.eventDate + 'T00:00:00')
+                                                    .toLocaleDateString('es-CO', {
+                                                        day: '2-digit', month: 'short', year: 'numeric'
+                                                    })
                                                 : '—'}
                                         </td>
                                         <td style={tdStyle({ color: '#555', fontSize: 13 })}>
@@ -577,19 +618,21 @@ const DashboardHome: React.FC = () => {
                     </table>
                 )}
 
-                {/* ── Tabla Noticias Vistas ────────────────────── */}
+                {/* Tabla Noticias Vistas */}
                 <h4 style={{ color: '#1565c0', marginBottom: 12, fontWeight: 600 }}>
                     📰 Noticias Vistas
                 </h4>
                 {recentNews.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: '#bbb', padding: '20px 0', fontSize: 13 }}>
+                    <div style={{
+                        textAlign: 'center', color: '#bbb', padding: '20px 0', fontSize: 13
+                    }}>
                         <p style={{ margin: 0 }}>Sin noticias registradas</p>
                     </div>
                 ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                         <thead>
                             <tr style={{ borderBottom: '2px solid #f0f0f0', background: '#fafafa' }}>
-                                {['Título', 'Categoría', 'Área', 'Fecha pub.', 'Estado', ' Vistas'].map(h => (
+                                {['Título', 'Categoría', 'Área', 'Fecha pub.', 'Estado', '👁️ Vistas'].map(h => (
                                     <th key={h} style={thStyle}>{h}</th>
                                 ))}
                             </tr>
@@ -622,9 +665,10 @@ const DashboardHome: React.FC = () => {
                                         </td>
                                         <td style={tdStyle({ color: '#666', fontSize: 13 })}>
                                             {n.publishDate || n.createdAt
-                                                ? new Date(n.publishDate || n.createdAt).toLocaleDateString('es-CO', {
-                                                    day: '2-digit', month: 'short', year: 'numeric'
-                                                })
+                                                ? new Date(n.publishDate || n.createdAt)
+                                                    .toLocaleDateString('es-CO', {
+                                                        day: '2-digit', month: 'short', year: 'numeric'
+                                                    })
                                                 : '—'}
                                         </td>
                                         <td style={tdStyle()}>
@@ -648,7 +692,6 @@ const DashboardHome: React.FC = () => {
                     </table>
                 )}
 
-                {/* Leyenda */}
                 <div style={{
                     marginTop: 14, padding: '8px 12px', background: '#f9f9f9',
                     borderRadius: 8, fontSize: 12, color: '#888',
