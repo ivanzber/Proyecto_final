@@ -7,21 +7,23 @@ on:
     paths:
       - 'backend/**'
       - '.github/workflows/main_campus-udec-backend.yml'
+
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: backend
 
     steps:
-      # 1. Checkout del código
+      # 1. Obtener código
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configurar Node.js 18
+      # 2. Configurar Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -29,32 +31,30 @@ jobs:
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
-      # 3. Instalar TODAS las dependencias (dev incluidas para el build)
-      - name: Install all dependencies
-        run: npm ci
+      # 3. Instalar dependencias
+      - name: Install dependencies
+        run: npm install
 
-      # 4. Compilar TypeScript → dist/
-      - name: Build NestJS application
+      # 4. Compilar aplicación NestJS
+      - name: Build application
         run: npm run build
 
-      # 5. Borrar node_modules y reinstalar SOLO producción
-      - name: Install production dependencies only
+      # 5. Verificar módulos NestJS
+      - name: Verify NestJS modules
         run: |
-          rm -rf node_modules
-          npm ci --omit=dev
+          ls node_modules/@nestjs
 
-      # 6. Crear el artefacto de despliegue:
-      #    dist/ + node_modules/ + package.json
-      - name: Zip artifact for deployment
+      # 6. Crear ZIP para despliegue
+      - name: Create deployment package
         run: |
           zip -r ../release.zip \
-            dist/ \
-            node_modules/ \
+            dist \
+            node_modules \
             package.json \
             package-lock.json
 
-      # 7. Subir el artefacto
-      - name: Upload artifact for deployment job
+      # 7. Subir artefacto
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: nestjs-app
@@ -63,19 +63,23 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build-and-deploy
+
     environment:
-      name: 'Production'
+      name: Production
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
-      - name: Download artifact from build job
+      # 1. Descargar artefacto
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: nestjs-app
 
-      - name: Unzip artifact for deployment
+      # 2. Extraer ZIP
+      - name: Unzip artifact
         run: unzip release.zip
 
+      # 3. Desplegar en Azure
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
