@@ -14,13 +14,11 @@ import * as entities from './entities';
 
 @Module({
     imports: [
-        // Environment configuration
         ConfigModule.forRoot({
             isGlobal: true,
             envFilePath: '.env',
         }),
 
-        // Database configuration
         TypeOrmModule.forRoot({
             type: 'mysql',
             host: process.env.DB_HOST || 'localhost',
@@ -29,19 +27,21 @@ import * as entities from './entities';
             password: process.env.DB_PASS || '',
             database: process.env.DB_NAME || 'campus_virtual',
             entities: Object.values(entities),
-            synchronize: process.env.NODE_ENV === 'development', // ⚠️ Disable in production
+            synchronize: process.env.NODE_ENV === 'development',
             logging: process.env.NODE_ENV === 'development',
             charset: 'utf8mb4',
             timezone: 'Z',
+            // ── SSL para Azure MySQL ──────────────────────────
+            ssl: process.env.NODE_ENV === 'production'
+                ? { rejectUnauthorized: false }
+                : false,
         }),
 
-        // Rate limiting
         ThrottlerModule.forRoot([{
             ttl: parseInt(process.env.RATE_LIMIT_TTL, 10) || 60,
             limit: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
         }]),
 
-        // Feature modules
         AuthModule,
         UsersModule,
         AreasModule,

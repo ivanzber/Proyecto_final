@@ -37,3 +37,6 @@ coverage/
 # Uploads
 uploads/
 temp/
+
+# Azure deployment credentials (DO NOT COMMIT)
+azure-credentials.txt
