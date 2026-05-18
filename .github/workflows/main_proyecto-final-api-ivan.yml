@@ -22,31 +22,20 @@ jobs:
         working-directory: backend
 
     steps:
-      # 1. Obtener código del repositorio
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configurar Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
 
-      # 3. Instalar dependencias
       - name: Install dependencies
         run: npm install
 
-      # 4. Compilar aplicación NestJS
-      - name: Build application
+      - name: Build NestJS
         run: npm run build
 
-      # 5. Verificar que NestJS esté instalado
-      - name: Verify NestJS modules
-        run: ls node_modules/@nestjs
-
-      # 6. Subir artefacto para deploy
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -58,14 +47,12 @@ jobs:
     needs: build
 
     steps:
-      # 1. Descargar artefacto
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: backend-app
           path: .
 
-      # 2. Desplegar en Azure App Service
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
