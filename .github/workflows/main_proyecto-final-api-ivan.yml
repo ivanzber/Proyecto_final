@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
 
     defaults:
@@ -19,72 +19,40 @@ jobs:
         working-directory: backend
 
     steps:
-      # 1. Obtener código
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Configurar Node.js
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
 
-      # 3. Instalar dependencias
       - name: Install dependencies
         run: npm install
 
-      # 4. Compilar aplicación NestJS
-      - name: Build application
+      - name: Build NestJS
         run: npm run build
 
-      # 5. Verificar módulos NestJS
-      - name: Verify NestJS modules
-        run: |
-          ls node_modules/@nestjs
-
-      # 6. Crear ZIP para despliegue
-      - name: Create deployment package
-        run: |
-          zip -r ../release.zip \
-            dist \
-            node_modules \
-            package.json \
-            package-lock.json
-
-      # 7. Subir artefacto
-      - name: Upload artifact
+      - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nestjs-app
-          path: release.zip
+          name: backend-app
+          path: backend
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-deploy
-
-    environment:
-      name: Production
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    needs: build
 
     steps:
-      # 1. Descargar artefacto
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: nestjs-app
+          name: backend-app
+          path: .
 
-      # 2. Extraer ZIP
-      - name: Unzip artifact
-        run: unzip release.zip
-
-      # 3. Desplegar en Azure
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'proyecto-final-api-ivan'
-          slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: .
