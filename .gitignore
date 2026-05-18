@@ -40,3 +40,9 @@ temp/
 
 # Azure deployment credentials (DO NOT COMMIT)
 azure-credentials.txt
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
