@@ -7,9 +7,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'backend/**'
-      - '.github/workflows/main_campus-udec-backend.yml'
 
   workflow_dispatch:
 
@@ -33,14 +30,22 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build NestJS
+      - name: Build application
         run: npm run build
+
+      # SOLO subir archivos necesarios
+      - name: Prepare deployment package
+        run: |
+          mkdir deploy
+          cp -r dist deploy/
+          cp package.json deploy/
+          cp package-lock.json deploy/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-app
-          path: backend
+          path: backend/deploy
 
   deploy:
     runs-on: ubuntu-latest
