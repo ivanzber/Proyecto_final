@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { authService } from '@/services/authService';
 import { usersService } from '@/services/usersService';
@@ -38,11 +38,387 @@ const useMyAreas = (userId?: number) => {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// HELPERS para el modal de historial
+// ══════════════════════════════════════════════════════════════════════════════
+const CATEGORY_COLORS: Record<string, string> = {
+    ACADEMICO:     '#1a7f37',
+    CULTURAL:      '#6639ba',
+    DEPORTIVO:     '#0969da',
+    INSTITUCIONAL: '#bc4c00',
+    OTRO:          '#57606a',
+};
+
+function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const days = Math.floor(diff / 86_400_000);
+    if (days === 0) return 'hoy';
+    if (days === 1) return 'ayer';
+    if (days < 7)   return `hace ${days} días`;
+    if (days < 30)  return `hace ${Math.floor(days / 7)} sem.`;
+    if (days < 365) return `hace ${Math.floor(days / 30)} meses`;
+    return `hace ${Math.floor(days / 365)} años`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODAL HISTORIAL — filtrado por áreas del subadmin
+// ══════════════════════════════════════════════════════════════════════════════
+const HistorialModal: React.FC<{
+    areaIds: number[];
+    areaName: string;
+    onClose: () => void;
+}> = ({ areaIds, areaName, onClose }) => {
+    const [pastEvents, setPastEvents] = useState<Event[]>([]);
+    const [loading, setLoading]       = useState(true);
+    const [search, setSearch]         = useState('');
+    const [catFilter, setCatFilter]   = useState('');
+    const [dateFrom, setDateFrom]     = useState('');
+    const [dateTo, setDateTo]         = useState('');
+    const [expandedId, setExpandedId] = useState<number | null>(null);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                // getPast() llama a /events/admin/all y filtra < hoy, ordenado DESC
+                const past = await eventsService.getPast();
+                // Filtrar solo los que pertenecen a las áreas del subadmin
+                const mine = past.filter(e =>
+                    areaIds.includes((e as any).areaId) ||
+                    areaIds.includes((e as any).pointOfInterest?.areaId)
+                );
+                setPastEvents(mine);
+            } catch {
+                alert('Error al cargar el historial');
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [areaIds]);
+
+    const filtered = pastEvents.filter(e => {
+        const matchSearch =
+            e.title.toLowerCase().includes(search.toLowerCase()) ||
+            (e.location  || '').toLowerCase().includes(search.toLowerCase()) ||
+            (e.category  || '').toLowerCase().includes(search.toLowerCase());
+        const matchCat  = !catFilter || e.category === catFilter;
+        const evDate    = new Date(e.eventDate);
+        const matchFrom = !dateFrom || evDate >= new Date(dateFrom);
+        const matchTo   = !dateTo   || evDate <= new Date(dateTo);
+        return matchSearch && matchCat && matchFrom && matchTo;
+    });
+
+    // Agrupar por mes-año
+    const grouped = filtered.reduce<Record<string, Event[]>>((acc, ev) => {
+        const key = new Date(ev.eventDate).toLocaleDateString('es-CO', {
+            year: 'numeric', month: 'long',
+        });
+        (acc[key] = acc[key] || []).push(ev);
+        return acc;
+    }, {});
+
+    const hasFilters = !!(search || catFilter || dateFrom || dateTo);
+    const clearFilters = () => { setSearch(''); setCatFilter(''); setDateFrom(''); setDateTo(''); };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="modal-content"
+                onClick={e => e.stopPropagation()}
+                style={{
+                    maxWidth: 780, width: '95%', maxHeight: '88vh',
+                    display: 'flex', flexDirection: 'column',
+                }}
+            >
+                {/* Header */}
+                <div className="modal-header" style={{ flexShrink: 0 }}>
+                    <div>
+                        <h2 style={{ margin: 0 }}>🕐 Historial de Eventos</h2>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#888' }}>
+                            {pastEvents.length} eventos pasados · área: <strong>{areaName}</strong>
+                        </p>
+                    </div>
+                    <button className="modal-close" onClick={onClose}>×</button>
+                </div>
+
+                {/* Filtros */}
+                <div style={{
+                    padding: '12px 24px', borderBottom: '1px solid #e0e0e0',
+                    flexShrink: 0, display: 'flex', flexWrap: 'wrap', gap: 8,
+                }}>
+                    <input
+                        type="text"
+                        placeholder="🔍 Buscar evento..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{
+                            flex: '1 1 180px', padding: '7px 12px',
+                            border: '1px solid #ddd', borderRadius: 6,
+                            fontSize: '0.85rem', outline: 'none',
+                        }}
+                    />
+                    <select
+                        value={catFilter}
+                        onChange={e => setCatFilter(e.target.value)}
+                        style={{
+                            flex: '0 1 155px', padding: '7px 10px',
+                            border: '1px solid #ddd', borderRadius: 6,
+                            fontSize: '0.85rem', background: '#fff',
+                        }}
+                    >
+                        <option value="">Todas las categorías</option>
+                        <option value="ACADEMICO">Académico</option>
+                        <option value="CULTURAL">Cultural</option>
+                        <option value="DEPORTIVO">Deportivo</option>
+                        <option value="INSTITUCIONAL">Institucional</option>
+                        <option value="OTRO">Otro</option>
+                    </select>
+                    <input
+                        type="date" value={dateFrom} title="Desde"
+                        onChange={e => setDateFrom(e.target.value)}
+                        style={{
+                            flex: '0 1 140px', padding: '7px 10px',
+                            border: '1px solid #ddd', borderRadius: 6, fontSize: '0.85rem',
+                        }}
+                    />
+                    <input
+                        type="date" value={dateTo} title="Hasta"
+                        onChange={e => setDateTo(e.target.value)}
+                        style={{
+                            flex: '0 1 140px', padding: '7px 10px',
+                            border: '1px solid #ddd', borderRadius: 6, fontSize: '0.85rem',
+                        }}
+                    />
+                    {hasFilters && (
+                        <button
+                            onClick={clearFilters}
+                            style={{
+                                padding: '7px 12px', background: 'transparent',
+                                border: '1px solid #ddd', borderRadius: 6,
+                                color: '#888', cursor: 'pointer', fontSize: '0.8rem',
+                            }}
+                        >
+                            ✕ Limpiar
+                        </button>
+                    )}
+                </div>
+
+                {/* Cuerpo scrolleable */}
+                <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px' }}>
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '48px 0', color: '#aaa' }}>
+                            Cargando historial...
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                            <div style={{ fontSize: '2.5rem' }}>🗓️</div>
+                            <p style={{ color: '#aaa', marginTop: 8 }}>
+                                {hasFilters
+                                    ? 'Sin resultados para los filtros aplicados'
+                                    : 'No hay eventos pasados en esta área aún'}
+                            </p>
+                            {hasFilters && (
+                                <button
+                                    onClick={clearFilters}
+                                    style={{
+                                        marginTop: 8, background: 'none', border: 'none',
+                                        color: '#2e7d32', cursor: 'pointer', fontSize: '0.85rem',
+                                    }}
+                                >
+                                    Limpiar filtros
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        Object.entries(grouped).map(([month, evs]) => (
+                            <div key={month} style={{ marginBottom: 24 }}>
+                                {/* Separador de mes */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                    <span style={{
+                                        fontSize: '0.72rem', fontWeight: 700, color: '#888',
+                                        textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap',
+                                    }}>
+                                        {month}
+                                    </span>
+                                    <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+                                    <span style={{
+                                        fontSize: '0.72rem', color: '#888',
+                                        background: '#f5f5f5', border: '1px solid #e0e0e0',
+                                        borderRadius: 10, padding: '1px 8px',
+                                    }}>
+                                        {evs.length}
+                                    </span>
+                                </div>
+
+                                {/* Cards del mes */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {evs.map(ev => {
+                                        const isOpen = expandedId === ev.id;
+                                        const color  = CATEGORY_COLORS[ev.category || ''] || '#57606a';
+                                        const evDate = new Date(ev.eventDate);
+
+                                        return (
+                                            <div
+                                                key={ev.id}
+                                                style={{
+                                                    border: '1px solid #e0e0e0', borderRadius: 8,
+                                                    background: isOpen ? '#f9fbe7' : '#fff',
+                                                    overflow: 'hidden', transition: 'background 0.15s',
+                                                }}
+                                            >
+                                                <button
+                                                    onClick={() => setExpandedId(isOpen ? null : ev.id)}
+                                                    style={{
+                                                        width: '100%', textAlign: 'left',
+                                                        background: 'none', border: 'none',
+                                                        cursor: 'pointer', padding: '10px 14px',
+                                                        display: 'flex', alignItems: 'center', gap: 14,
+                                                    }}
+                                                >
+                                                    {/* Día */}
+                                                    <div style={{
+                                                        flexShrink: 0, width: 44, textAlign: 'center',
+                                                        borderRight: `2px solid ${color}`, paddingRight: 12,
+                                                    }}>
+                                                        <div style={{ fontSize: '0.65rem', color: '#aaa', textTransform: 'uppercase' }}>
+                                                            {evDate.toLocaleDateString('es-CO', { month: 'short' })}
+                                                        </div>
+                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#333', lineHeight: 1.1 }}>
+                                                            {evDate.getDate()}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Info */}
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                            <span style={{
+                                                                fontWeight: 600, color: '#333', fontSize: '0.9rem',
+                                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                            }}>
+                                                                {ev.title}
+                                                            </span>
+                                                            {ev.category && (
+                                                                <span style={{
+                                                                    fontSize: '0.7rem', padding: '1px 8px', borderRadius: 10,
+                                                                    flexShrink: 0, background: color + '18', color,
+                                                                    border: `1px solid ${color}33`, fontWeight: 600,
+                                                                }}>
+                                                                    {ev.category}
+                                                                </span>
+                                                            )}
+                                                            {!ev.isPublished && (
+                                                                <span style={{
+                                                                    fontSize: '0.7rem', padding: '1px 8px', borderRadius: 10,
+                                                                    flexShrink: 0, background: '#f5f5f5', color: '#aaa',
+                                                                    border: '1px solid #e0e0e0',
+                                                                }}>
+                                                                    Borrador
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{
+                                                            display: 'flex', gap: 12, marginTop: 3,
+                                                            fontSize: '0.75rem', color: '#aaa', flexWrap: 'wrap',
+                                                        }}>
+                                                            {ev.location && <span>📍 {ev.location}</span>}
+                                                            {ev.area?.name && <span>🏢 {ev.area.name}</span>}
+                                                            {ev.startTime && (
+                                                                <span>⏰ {ev.startTime}{ev.endTime ? ` – ${ev.endTime}` : ''}</span>
+                                                            )}
+                                                            <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>
+                                                                {timeAgo(ev.eventDate)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Chevron */}
+                                                    <span style={{
+                                                        color: '#aaa', flexShrink: 0, fontSize: '0.8rem',
+                                                        display: 'inline-block',
+                                                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                        transition: 'transform 0.2s',
+                                                    }}>
+                                                        ▾
+                                                    </span>
+                                                </button>
+
+                                                {/* Detalle expandido */}
+                                                {isOpen && (
+                                                    <div style={{
+                                                        padding: '12px 16px 14px 72px',
+                                                        borderTop: '1px solid #e0e0e0',
+                                                        background: '#f9fbe7',
+                                                    }}>
+                                                        <div style={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                                                            gap: '10px 20px', fontSize: '0.82rem',
+                                                        }}>
+                                                            <div>
+                                                                <p style={{ color: '#aaa', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                                                    Fecha completa
+                                                                </p>
+                                                                <p style={{ color: '#333', margin: 0 }}>
+                                                                    {evDate.toLocaleDateString('es-CO', {
+                                                                        weekday: 'long', year: 'numeric',
+                                                                        month: 'long', day: 'numeric',
+                                                                    })}
+                                                                </p>
+                                                            </div>
+                                                            {ev.pointOfInterest && (
+                                                                <div>
+                                                                    <p style={{ color: '#aaa', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                                                        Punto de Interés
+                                                                    </p>
+                                                                    <p style={{ color: '#333', margin: 0 }}>
+                                                                        {ev.pointOfInterest.title}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                            {ev.description && (
+                                                                <div style={{ gridColumn: '1 / -1' }}>
+                                                                    <p style={{ color: '#aaa', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                                                        Descripción
+                                                                    </p>
+                                                                    <p style={{ color: '#555', margin: 0, lineHeight: 1.5 }}>
+                                                                        {ev.description}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div style={{
+                    padding: '12px 24px', borderTop: '1px solid #e0e0e0',
+                    flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                    <span style={{ fontSize: '0.8rem', color: '#aaa' }}>
+                        {filtered.length !== pastEvents.length
+                            ? `${filtered.length} de ${pastEvents.length} eventos`
+                            : `${pastEvents.length} eventos en total`}
+                    </span>
+                    <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
 // PÁGINA: Inicio del subadmin
 // ══════════════════════════════════════════════════════════════════════════════
 const SubadminHome: React.FC<{ userId?: number }> = ({ userId }) => {
     const { areas, loading } = useMyAreas(userId);
     const [counts, setCounts] = useState({ events: 0, news: 0, points: 0 });
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (!areas.length) return;
@@ -87,7 +463,7 @@ const SubadminHome: React.FC<{ userId?: number }> = ({ userId }) => {
             {areas.length === 0 ? (
                 <div style={{
                     background: '#fff8e1', border: '1px solid #ffe082',
-                    borderRadius: 10, padding: 24, textAlign: 'center', marginBottom: 24
+                    borderRadius: 10, padding: 24, textAlign: 'center', marginBottom: 24,
                 }}>
                     <div style={{ fontSize: 40, marginBottom: 8 }}>⚠️</div>
                     <h3 style={{ color: '#f57f17', margin: '0 0 8px' }}>Sin áreas asignadas</h3>
@@ -106,7 +482,7 @@ const SubadminHome: React.FC<{ userId?: number }> = ({ userId }) => {
                                 <div key={a.id} style={{
                                     background: '#f1f8f1', border: '1px solid #a5d6a7',
                                     borderRadius: 8, padding: '10px 16px',
-                                    display: 'flex', alignItems: 'center', gap: 8
+                                    display: 'flex', alignItems: 'center', gap: 8,
                                 }}>
                                     <span>📍</span>
                                     <div>
@@ -119,28 +495,72 @@ const SubadminHome: React.FC<{ userId?: number }> = ({ userId }) => {
                     </div>
 
                     <div className="stats-grid">
-                        <div className="stat-card">
+                        {/* Eventos → /subadmin/areas (tab eventos) */}
+                        <div
+                            className="stat-card"
+                            onClick={() => navigate('/subadmin/areas')}
+                            title="Ir a Mis Áreas → Eventos"
+                            style={{ cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
+                                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 20px rgba(67,233,123,0.25)';
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+                                (e.currentTarget as HTMLDivElement).style.boxShadow = '';
+                            }}
+                        >
                             <div className="stat-icon" style={{ background: 'linear-gradient(135deg,#43e97b,#38f9d7)' }}>📅</div>
                             <div className="stat-info">
                                 <h3>Eventos</h3>
                                 <p className="stat-number">{counts.events}</p>
-                                <span className="stat-label">en mis áreas</span>
+                                <span className="stat-label">en mis áreas →</span>
                             </div>
                         </div>
-                        <div className="stat-card">
+
+                        {/* Noticias → /subadmin/areas (tab noticias) */}
+                        <div
+                            className="stat-card"
+                            onClick={() => navigate('/subadmin/areas')}
+                            title="Ir a Mis Áreas → Noticias"
+                            style={{ cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
+                                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 20px rgba(250,112,154,0.25)';
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+                                (e.currentTarget as HTMLDivElement).style.boxShadow = '';
+                            }}
+                        >
                             <div className="stat-icon" style={{ background: 'linear-gradient(135deg,#fa709a,#fee140)' }}>📰</div>
                             <div className="stat-info">
                                 <h3>Noticias</h3>
                                 <p className="stat-number">{counts.news}</p>
-                                <span className="stat-label">en mis áreas</span>
+                                <span className="stat-label">en mis áreas →</span>
                             </div>
                         </div>
-                        <div className="stat-card">
+
+                        {/* Puntos de Interés → /subadmin/points */}
+                        <div
+                            className="stat-card"
+                            onClick={() => navigate('/subadmin/points')}
+                            title="Ir a Mis Puntos de Interés"
+                            style={{ cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
+                                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 6px 20px rgba(79,172,254,0.25)';
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+                                (e.currentTarget as HTMLDivElement).style.boxShadow = '';
+                            }}
+                        >
                             <div className="stat-icon" style={{ background: 'linear-gradient(135deg,#4facfe,#00f2fe)' }}>📍</div>
                             <div className="stat-info">
                                 <h3>Puntos de Interés</h3>
                                 <p className="stat-number">{counts.points}</p>
-                                <span className="stat-label">en mis áreas</span>
+                                <span className="stat-label">en mis áreas →</span>
                             </div>
                         </div>
                     </div>
@@ -151,20 +571,21 @@ const SubadminHome: React.FC<{ userId?: number }> = ({ userId }) => {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
-// PÁGINA: Mis Áreas — con gestión de Eventos y Noticias
+// PÁGINA: Mis Áreas — con gestión de Eventos, Noticias e Historial
 // ══════════════════════════════════════════════════════════════════════════════
 const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
     const { areas, loading } = useMyAreas(userId);
 
-    const [selectedArea, setSelectedArea] = useState<Area | null>(null);
-    const [tab, setTab] = useState<'eventos' | 'noticias'>('eventos');
-    const [eventos, setEventos] = useState<Event[]>([]);
-    const [noticias, setNoticias] = useState<News[]>([]);
-    const [areaPoints, setAreaPoints] = useState<PointOfInterest[]>([]);
-    const [loadingData, setLoadingData] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [editingItem, setEditingItem] = useState<any>(null);
-    const [saving, setSaving] = useState(false);
+    const [selectedArea, setSelectedArea]   = useState<Area | null>(null);
+    const [tab, setTab]                     = useState<'eventos' | 'noticias'>('eventos');
+    const [eventos, setEventos]             = useState<Event[]>([]);
+    const [noticias, setNoticias]           = useState<News[]>([]);
+    const [areaPoints, setAreaPoints]       = useState<PointOfInterest[]>([]);
+    const [loadingData, setLoadingData]     = useState(false);
+    const [showModal, setShowModal]         = useState(false);
+    const [editingItem, setEditingItem]     = useState<any>(null);
+    const [saving, setSaving]               = useState(false);
+    const [showHistorial, setShowHistorial] = useState(false); // ← NUEVO
 
     // Formulario evento
     const [eventForm, setEventForm] = useState<CreateEventDto>({
@@ -221,16 +642,9 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
     const openCreateEvento = () => {
         setEditingItem(null);
         setEventForm({
-            title: '',
-            description: '',
-            eventDate: '',
-            startTime: '',
-            endTime: '',
-            location: '',
-            category: 'DEPORTIVO',
-            isPublished: true,
-            areaId: selectedArea?.id,
-            pointOfInterestId: undefined,
+            title: '', description: '', eventDate: '', startTime: '',
+            endTime: '', location: '', category: 'DEPORTIVO', isPublished: true,
+            areaId: selectedArea?.id, pointOfInterestId: undefined,
         });
         setShowModal(true);
     };
@@ -238,14 +652,10 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
     const openEditEvento = (e: Event) => {
         setEditingItem(e);
         setEventForm({
-            title: e.title,
-            description: e.description || '',
-            eventDate: e.eventDate,
-            startTime: e.startTime || '',
-            endTime: e.endTime || '',
-            location: e.location || '',
-            category: e.category || 'DEPORTIVO',
-            isPublished: e.isPublished,
+            title: e.title, description: e.description || '',
+            eventDate: e.eventDate, startTime: e.startTime || '',
+            endTime: e.endTime || '', location: e.location || '',
+            category: e.category || 'DEPORTIVO', isPublished: e.isPublished,
             areaId: selectedArea?.id,
             pointOfInterestId: (e as any).pointOfInterestId || undefined,
         });
@@ -264,11 +674,8 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
     const openEditNoticia = (n: News) => {
         setEditingItem(n);
         setNewsForm({
-            title: n.title,
-            content: n.content,
-            summary: n.summary || '',
-            category: n.category || '',
-            isPublished: n.isPublished,
+            title: n.title, content: n.content, summary: n.summary || '',
+            category: n.category || '', isPublished: n.isPublished,
             areaId: selectedArea?.id,
         });
         setShowModal(true);
@@ -329,7 +736,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
         <div className="dashboard-content">
             <h1>Mis Áreas</h1>
 
-            {/* ── Selector de área ─────────────────────────────── */}
+            {/* Selector de área */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
                 {areas.map(a => (
                     <button key={a.id} onClick={() => setSelectedArea(a)} style={{
@@ -355,8 +762,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                 flex: 1, padding: '14px 0', border: 'none', cursor: 'pointer',
                                 background: tab === t ? '#fff' : '#f9f9f9',
                                 color: tab === t ? '#2e7d32' : '#888',
-                                fontWeight: tab === t ? 700 : 400,
-                                fontSize: 14,
+                                fontWeight: tab === t ? 700 : 400, fontSize: 14,
                                 borderBottom: tab === t ? '3px solid #2e7d32' : '3px solid transparent',
                             }}>
                                 {t === 'eventos' ? '📅 Eventos' : '📰 Noticias'}
@@ -365,20 +771,35 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                     </div>
 
                     <div style={{ padding: 20 }}>
-                        {/* Header con botón crear */}
+                        {/* Header con botones */}
                         <div style={{
                             display: 'flex', justifyContent: 'space-between',
-                            alignItems: 'center', marginBottom: 16
+                            alignItems: 'center', marginBottom: 16,
                         }}>
                             <span style={{ color: '#888', fontSize: 13 }}>
                                 {tab === 'eventos'
-                                    ? `${eventos.length} evento(s) en ${selectedArea.name}`
+                                    ? `${eventos.length} evento(s) próximos en ${selectedArea.name}`
                                     : `${noticias.length} noticia(s) en ${selectedArea.name}`}
                             </span>
-                            <button className="btn btn-primary"
-                                onClick={tab === 'eventos' ? openCreateEvento : openCreateNoticia}>
-                                + {tab === 'eventos' ? 'Nuevo Evento' : 'Nueva Noticia'}
-                            </button>
+
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {/* ← BOTÓN HISTORIAL — solo visible en tab eventos */}
+                                {tab === 'eventos' && (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowHistorial(true)}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                                    >
+                                        🕐 Historial
+                                    </button>
+                                )}
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={tab === 'eventos' ? openCreateEvento : openCreateNoticia}
+                                >
+                                    + {tab === 'eventos' ? 'Nuevo Evento' : 'Nueva Noticia'}
+                                </button>
+                            </div>
                         </div>
 
                         {loadingData ? (
@@ -387,7 +808,10 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                             eventos.length === 0 ? (
                                 <div style={{ textAlign: 'center', color: '#aaa', padding: 32 }}>
                                     <div style={{ fontSize: 36 }}>📭</div>
-                                    <p>Sin eventos en esta área</p>
+                                    <p>Sin eventos próximos en esta área</p>
+                                    <p style={{ fontSize: 13 }}>
+                                        Usa el botón <strong>🕐 Historial</strong> para ver eventos pasados
+                                    </p>
                                 </div>
                             ) : (
                                 <table className="data-table">
@@ -409,8 +833,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                                 <td style={{ fontWeight: 500 }}>{e.title}</td>
                                                 <td>
                                                     {e.eventDate
-                                                        ? new Date(e.eventDate + 'T00:00:00')
-                                                            .toLocaleDateString('es-CO')
+                                                        ? new Date(e.eventDate + 'T00:00:00').toLocaleDateString('es-CO')
                                                         : '—'}
                                                 </td>
                                                 <td style={{ color: '#555', fontSize: 13 }}>
@@ -428,7 +851,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                                     <span style={{
                                                         background: '#e8f5e9', color: '#2e7d32',
                                                         padding: '2px 8px', borderRadius: 10,
-                                                        fontSize: 11, fontWeight: 600
+                                                        fontSize: 11, fontWeight: 600,
                                                     }}>{e.category || '—'}</span>
                                                 </td>
                                                 <td>
@@ -436,7 +859,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                                         background: e.isPublished ? '#e8f5e9' : '#f5f5f5',
                                                         color: e.isPublished ? '#2e7d32' : '#999',
                                                         padding: '2px 8px', borderRadius: 10, fontSize: 11,
-                                                        border: `1px solid ${e.isPublished ? '#a5d6a7' : '#ddd'}`
+                                                        border: `1px solid ${e.isPublished ? '#a5d6a7' : '#ddd'}`,
                                                     }}>
                                                         {e.isPublished ? '✅ Publicado' : '⏸ Borrador'}
                                                     </span>
@@ -485,7 +908,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                                         background: n.isPublished ? '#e8f5e9' : '#f5f5f5',
                                                         color: n.isPublished ? '#2e7d32' : '#999',
                                                         padding: '2px 8px', borderRadius: 10, fontSize: 11,
-                                                        border: `1px solid ${n.isPublished ? '#a5d6a7' : '#ddd'}`
+                                                        border: `1px solid ${n.isPublished ? '#a5d6a7' : '#ddd'}`,
                                                     }}>
                                                         {n.isPublished ? '✅ Publicado' : '⏸ Borrador'}
                                                     </span>
@@ -511,7 +934,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                 </div>
             )}
 
-            {/* ── Modal Evento ──────────────────────────────────── */}
+            {/* Modal Evento */}
             {showModal && tab === 'eventos' && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -520,14 +943,12 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                             <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
                         </div>
                         <div className="modal-body">
-
                             <div className="form-group">
                                 <label>Título *</label>
                                 <input className="form-control" value={eventForm.title}
                                     onChange={e => setEventForm({ ...eventForm, title: e.target.value })}
                                     placeholder="Título del evento" />
                             </div>
-
                             <div className="form-group">
                                 <label>Descripción</label>
                                 <textarea className="form-control" rows={3}
@@ -535,8 +956,6 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                     onChange={e => setEventForm({ ...eventForm, description: e.target.value })}
                                     placeholder="Descripción del evento..." />
                             </div>
-
-                            {/* ── Punto de Interés ── */}
                             <div className="form-group">
                                 <label>Punto de Interés</label>
                                 <select
@@ -544,16 +963,12 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                     value={eventForm.pointOfInterestId || ''}
                                     onChange={e => setEventForm({
                                         ...eventForm,
-                                        pointOfInterestId: e.target.value
-                                            ? Number(e.target.value)
-                                            : undefined,
+                                        pointOfInterestId: e.target.value ? Number(e.target.value) : undefined,
                                     })}
                                 >
                                     <option value="">Sin punto de interés</option>
                                     {areaPoints.map(pt => (
-                                        <option key={pt.id} value={pt.id}>
-                                            📍 {pt.title}
-                                        </option>
+                                        <option key={pt.id} value={pt.id}>📍 {pt.title}</option>
                                     ))}
                                 </select>
                                 {areaPoints.length === 0 && (
@@ -562,7 +977,6 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                     </small>
                                 )}
                             </div>
-
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                 <div className="form-group">
                                     <label>Fecha *</label>
@@ -594,14 +1008,12 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                         onChange={e => setEventForm({ ...eventForm, endTime: e.target.value })} />
                                 </div>
                             </div>
-
                             <div className="form-group">
                                 <label>Lugar</label>
                                 <input className="form-control" value={eventForm.location}
                                     onChange={e => setEventForm({ ...eventForm, location: e.target.value })}
                                     placeholder="Ej: Canchas de fútbol" />
                             </div>
-
                             <div className="form-group">
                                 <label>
                                     <input type="checkbox" checked={eventForm.isPublished}
@@ -610,12 +1022,9 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                     Publicar inmediatamente
                                 </label>
                             </div>
-
                         </div>
                         <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                                Cancelar
-                            </button>
+                            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
                             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                                 {saving ? 'Guardando...' : editingItem ? 'Actualizar' : 'Crear Evento'}
                             </button>
@@ -624,7 +1033,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                 </div>
             )}
 
-            {/* ── Modal Noticia ─────────────────────────────────── */}
+            {/* Modal Noticia */}
             {showModal && tab === 'noticias' && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -668,15 +1077,22 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                             </div>
                         </div>
                         <div className="modal-footer">
-                            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                                Cancelar
-                            </button>
+                            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
                             <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                                 {saving ? 'Guardando...' : editingItem ? 'Actualizar' : 'Crear Noticia'}
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ← MODAL HISTORIAL */}
+            {showHistorial && selectedArea && (
+                <HistorialModal
+                    areaIds={areas.map(a => a.id)}
+                    areaName={selectedArea.name}
+                    onClose={() => setShowHistorial(false)}
+                />
             )}
         </div>
     );
@@ -744,7 +1160,7 @@ const MyPointsPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                         <span style={{
                                             background: '#e3f2fd', color: '#1565c0',
                                             padding: '2px 8px', borderRadius: 10,
-                                            fontSize: 11, fontWeight: 600
+                                            fontSize: 11, fontWeight: 600,
                                         }}>{p.category || '—'}</span>
                                     </td>
                                     <td>
@@ -752,7 +1168,7 @@ const MyPointsPage: React.FC<{ userId?: number }> = ({ userId }) => {
                                             background: p.isVisible ? '#e8f5e9' : '#f5f5f5',
                                             color: p.isVisible ? '#2e7d32' : '#999',
                                             padding: '2px 8px', borderRadius: 10, fontSize: 11,
-                                            border: `1px solid ${p.isVisible ? '#a5d6a7' : '#ddd'}`
+                                            border: `1px solid ${p.isVisible ? '#a5d6a7' : '#ddd'}`,
                                         }}>
                                             {p.isVisible ? '✅ Visible' : '⏸ Oculto'}
                                         </span>

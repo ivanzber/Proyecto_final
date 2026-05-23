@@ -7,10 +7,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { plainToInstance } from 'class-transformer';
 import { User, Role, SubadminArea, Area } from '../entities';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AssignAreasDto } from './dto/assign-areas.dto';
+import { UserResponseDto } from './dto/user-response.dto';
 
 @Injectable()
 export class UsersService {
@@ -25,6 +27,13 @@ export class UsersService {
         private readonly areaRepository: Repository<Area>,
         private readonly dataSource: DataSource,
     ) { }
+
+    // ── Helper: serializar usuario con DTO ────────────────────
+    private toResponse(user: User): UserResponseDto {
+        return plainToInstance(UserResponseDto, user, {
+            excludeExtraneousValues: true,
+        });
+    }
 
     // ── Crear usuario ─────────────────────────────────────────
     async create(createUserDto: CreateUserDto, createdBy: number) {
@@ -49,24 +58,25 @@ export class UsersService {
         });
 
         const savedUser = await this.userRepository.save(user);
-        const { password, ...result } = savedUser;
-        return result;
+        // Recargar con relaciones para devolver la respuesta correcta
+        const withRelations = await this.userRepository.findOne({
+            where: { id: savedUser.id },
+            relations: ['role'],
+        });
+        return this.toResponse(withRelations!);
     }
 
     // ── Listar todos ──────────────────────────────────────────
-    async findAll() {
+    async findAll(): Promise<UserResponseDto[]> {
         const users = await this.userRepository.find({
             relations: ['role'],
             order: { createdAt: 'DESC' },
         });
-        return users.map(user => {
-            const { password, ...result } = user;
-            return result;
-        });
+        return users.map(user => this.toResponse(user));
     }
 
-    // ── Obtener uno ───────────────────────────────────────────
-    async findOne(id: number) {
+    // ── Obtener uno (raw, para uso interno del servicio) ─────
+    private async findOneRaw(id: number): Promise<User> {
         const user = await this.userRepository.findOne({
             where: { id },
             relations: ['role', 'assignedAreas', 'assignedAreas.area'],
@@ -74,13 +84,18 @@ export class UsersService {
         if (!user) {
             throw new NotFoundException('Usuario no encontrado');
         }
-        const { password, ...result } = user;
-        return result;
+        return user;
+    }
+
+    // ── Obtener uno (respuesta pública) ──────────────────────
+    async findOne(id: number): Promise<UserResponseDto> {
+        const user = await this.findOneRaw(id);
+        return this.toResponse(user);
     }
 
     // ── Actualizar ────────────────────────────────────────────
-    async update(id: number, updateUserDto: UpdateUserDto) {
-        const user = await this.findOne(id);
+    async update(id: number, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
+        const user = await this.findOneRaw(id);
 
         if (updateUserDto.email && updateUserDto.email !== user.email) {
             const existing = await this.userRepository.findOne({
@@ -152,8 +167,8 @@ export class UsersService {
         userId: number,
         assignAreasDto: AssignAreasDto,
         assignedBy: number,
-    ) {
-        const user = await this.findOne(userId);
+    ): Promise<UserResponseDto> {
+        const user = await this.findOneRaw(userId);
 
         if (user.role.name !== 'SUBADMIN') {
             throw new ForbiddenException(

@@ -3,7 +3,7 @@ import { eventsService, Event, CreateEventDto } from '@/services/eventsService';
 import { areasService, Area } from '@/services/areasService';
 import { pointsService, PointOfInterest } from '@/services/pointsService';
 
-// ─── Modal ─────────────────────────────────────────────────────────────
+// ─── Modal Crear/Editar (sin cambios) ──────────────────────────────────
 const EventModal: React.FC<{
     event: Event | null;
     areas: Area[];
@@ -181,19 +181,379 @@ const EventModal: React.FC<{
     );
 };
 
-// ─── Main Component ─────────────────────────────────────────────────────
-const EventsManagement: React.FC = () => {
-    const [events, setEvents] = useState<Event[]>([]);
-    const [areas, setAreas] = useState<Area[]>([]);
-    const [points, setPoints] = useState<PointOfInterest[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-    const [search, setSearch] = useState('');
+// ─── Helpers ────────────────────────────────────────────────────────────
+const CATEGORY_COLORS: Record<string, string> = {
+    ACADEMICO:     '#1a7f37',
+    CULTURAL:      '#6639ba',
+    DEPORTIVO:     '#0969da',
+    INSTITUCIONAL: '#bc4c00',
+    OTRO:          '#57606a',
+};
+
+function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const days = Math.floor(diff / 86_400_000);
+    if (days === 0) return 'hoy';
+    if (days === 1) return 'ayer';
+    if (days < 7)   return `hace ${days} días`;
+    if (days < 30)  return `hace ${Math.floor(days / 7)} sem.`;
+    if (days < 365) return `hace ${Math.floor(days / 30)} meses`;
+    return `hace ${Math.floor(days / 365)} años`;
+}
+
+// ─── Modal Historial ────────────────────────────────────────────────────
+const HistorialModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+    const [pastEvents, setPastEvents] = useState<Event[]>([]);
+    const [loading, setLoading]       = useState(true);
+    const [search, setSearch]         = useState('');
+    const [catFilter, setCatFilter]   = useState('');
+    const [dateFrom, setDateFrom]     = useState('');
+    const [dateTo, setDateTo]         = useState('');
+    const [expandedId, setExpandedId] = useState<number | null>(null);
 
     useEffect(() => {
-        loadData();
+        (async () => {
+            try {
+                const past = await eventsService.getPast();
+                setPastEvents(past);
+            } catch {
+                alert('Error al cargar el historial');
+            } finally {
+                setLoading(false);
+            }
+        })();
     }, []);
+
+    const filtered = pastEvents.filter(e => {
+        const matchSearch =
+            e.title.toLowerCase().includes(search.toLowerCase()) ||
+            (e.location  || '').toLowerCase().includes(search.toLowerCase()) ||
+            (e.category  || '').toLowerCase().includes(search.toLowerCase());
+        const matchCat  = !catFilter || e.category === catFilter;
+        const evDate    = new Date(e.eventDate);
+        const matchFrom = !dateFrom || evDate >= new Date(dateFrom);
+        const matchTo   = !dateTo   || evDate <= new Date(dateTo);
+        return matchSearch && matchCat && matchFrom && matchTo;
+    });
+
+    const grouped = filtered.reduce<Record<string, Event[]>>((acc, ev) => {
+        const key = new Date(ev.eventDate).toLocaleDateString('es-CO', {
+            year: 'numeric', month: 'long',
+        });
+        (acc[key] = acc[key] || []).push(ev);
+        return acc;
+    }, {});
+
+    const hasFilters = !!(search || catFilter || dateFrom || dateTo);
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div
+                className="modal-content"
+                onClick={e => e.stopPropagation()}
+                style={{
+                    maxWidth: 780, width: '95%', maxHeight: '88vh',
+                    display: 'flex', flexDirection: 'column',
+                }}
+            >
+                {/* Header */}
+                <div className="modal-header" style={{ flexShrink: 0 }}>
+                    <div>
+                        <h2 style={{ margin: 0 }}>🕐 Historial de Eventos</h2>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#888' }}>
+                            {pastEvents.length} eventos pasados registrados
+                        </p>
+                    </div>
+                    <button className="modal-close" onClick={onClose}>×</button>
+                </div>
+
+                {/* Filtros */}
+                <div style={{
+                    padding: '12px 24px', borderBottom: '1px solid #e0e0e0',
+                    flexShrink: 0, display: 'flex', flexWrap: 'wrap', gap: 8,
+                }}>
+                    <input
+                        type="text"
+                        placeholder="🔍 Buscar evento..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        style={{
+                            flex: '1 1 180px', padding: '7px 12px',
+                            background: '#fff', border: '1px solid #e0e0e0',
+                            borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                        }}
+                    />
+                    <select
+                        value={catFilter}
+                        onChange={e => setCatFilter(e.target.value)}
+                        style={{
+                            flex: '0 1 155px', padding: '7px 10px',
+                            background: '#fff', border: '1px solid #e0e0e0',
+                            borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                        }}
+                    >
+                        <option value="">Todas las categorías</option>
+                        <option value="ACADEMICO">Académico</option>
+                        <option value="CULTURAL">Cultural</option>
+                        <option value="DEPORTIVO">Deportivo</option>
+                        <option value="INSTITUCIONAL">Institucional</option>
+                        <option value="OTRO">Otro</option>
+                    </select>
+                    <input
+                        type="date" value={dateFrom} title="Desde"
+                        onChange={e => setDateFrom(e.target.value)}
+                        style={{
+                            flex: '0 1 140px', padding: '7px 10px',
+                            background: '#fff', border: '1px solid #e0e0e0',
+                            borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                        }}
+                    />
+                    <input
+                        type="date" value={dateTo} title="Hasta"
+                        onChange={e => setDateTo(e.target.value)}
+                        style={{
+                            flex: '0 1 140px', padding: '7px 10px',
+                            background: '#fff', border: '1px solid #e0e0e0',
+                            borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                        }}
+                    />
+                    {hasFilters && (
+                        <button
+                            onClick={() => { setSearch(''); setCatFilter(''); setDateFrom(''); setDateTo(''); }}
+                            style={{
+                                padding: '7px 12px', background: 'transparent',
+                                border: '1px solid #e0e0e0', borderRadius: 6,
+                                color: '#888', cursor: 'pointer', fontSize: '0.8rem',
+                            }}
+                        >
+                            ✕ Limpiar
+                        </button>
+                    )}
+                </div>
+
+                {/* Cuerpo scrolleable */}
+                <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px' }}>
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '48px 0', color: '#888' }}>
+                            Cargando historial...
+                        </div>
+                    ) : filtered.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                            <div style={{ fontSize: '2.5rem' }}>🗓️</div>
+                            <p style={{ color: '#888', marginTop: 8 }}>
+                                {hasFilters
+                                    ? 'Sin resultados para los filtros aplicados'
+                                    : 'No hay eventos pasados registrados aún'}
+                            </p>
+                            {hasFilters && (
+                                <button
+                                    onClick={() => { setSearch(''); setCatFilter(''); setDateFrom(''); setDateTo(''); }}
+                                    style={{
+                                        marginTop: 8, background: 'none', border: 'none',
+                                        color: '#2e7d32', cursor: 'pointer', fontSize: '0.85rem',
+                                    }}
+                                >
+                                    Limpiar filtros
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        Object.entries(grouped).map(([month, evs]) => (
+                            <div key={month} style={{ marginBottom: 24 }}>
+                                {/* Separador de mes */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                    <span style={{
+                                        fontSize: '0.72rem', fontWeight: 700, color: '#888',
+                                        textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap',
+                                    }}>
+                                        {month}
+                                    </span>
+                                    <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+                                    <span style={{
+                                        fontSize: '0.72rem', color: '#888',
+                                        background: '#f5f5f5', border: '1px solid #e0e0e0',
+                                        borderRadius: 10, padding: '1px 8px',
+                                    }}>
+                                        {evs.length}
+                                    </span>
+                                </div>
+
+                                {/* Cards del mes */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                    {evs.map(ev => {
+                                        const isOpen = expandedId === ev.id;
+                                        const color  = CATEGORY_COLORS[ev.category || ''] || '#57606a';
+                                        const evDate = new Date(ev.eventDate);
+
+                                        return (
+                                            <div
+                                                key={ev.id}
+                                                style={{
+                                                    border: '1px solid #e0e0e0', borderRadius: 8,
+                                                    background: isOpen ? '#f9fbe7' : '#fff',
+                                                    overflow: 'hidden', transition: 'background 0.15s',
+                                                }}
+                                            >
+                                                <button
+                                                    onClick={() => setExpandedId(isOpen ? null : ev.id)}
+                                                    style={{
+                                                        width: '100%', textAlign: 'left',
+                                                        background: 'none', border: 'none',
+                                                        cursor: 'pointer', padding: '10px 14px',
+                                                        display: 'flex', alignItems: 'center', gap: 14,
+                                                    }}
+                                                >
+                                                    {/* Día */}
+                                                    <div style={{
+                                                        flexShrink: 0, width: 44, textAlign: 'center',
+                                                        borderRight: `2px solid ${color}`, paddingRight: 12,
+                                                    }}>
+                                                        <div style={{ fontSize: '0.65rem', color: '#888', textTransform: 'uppercase' }}>
+                                                            {evDate.toLocaleDateString('es-CO', { month: 'short' })}
+                                                        </div>
+                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#333', lineHeight: 1.1 }}>
+                                                            {evDate.getDate()}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Info */}
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                            <span style={{
+                                                                fontWeight: 600, color: '#333', fontSize: '0.9rem',
+                                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                            }}>
+                                                                {ev.title}
+                                                            </span>
+                                                            {ev.category && (
+                                                                <span style={{
+                                                                    fontSize: '0.7rem', padding: '1px 8px', borderRadius: 10,
+                                                                    flexShrink: 0, background: color + '22', color,
+                                                                    border: `1px solid ${color}44`, fontWeight: 600,
+                                                                }}>
+                                                                    {ev.category}
+                                                                </span>
+                                                            )}
+                                                            {!ev.isPublished && (
+                                                                <span style={{
+                                                                    fontSize: '0.7rem', padding: '1px 8px', borderRadius: 10,
+                                                                    flexShrink: 0, background: '#f5f5f5', color: '#888',
+                                                                    border: '1px solid #e0e0e0',
+                                                                }}>
+                                                                    Borrador
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{
+                                                            display: 'flex', gap: 12, marginTop: 3,
+                                                            fontSize: '0.75rem', color: '#888', flexWrap: 'wrap',
+                                                        }}>
+                                                            {ev.location && <span>📍 {ev.location}</span>}
+                                                            {ev.area?.name && <span>🏢 {ev.area.name}</span>}
+                                                            {ev.startTime && (
+                                                                <span>⏰ {ev.startTime}{ev.endTime ? ` – ${ev.endTime}` : ''}</span>
+                                                            )}
+                                                            <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>
+                                                                {timeAgo(ev.eventDate)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Chevron */}
+                                                    <span style={{
+                                                        color: '#888', flexShrink: 0, fontSize: '0.8rem',
+                                                        display: 'inline-block',
+                                                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                        transition: 'transform 0.2s',
+                                                    }}>
+                                                        ▾
+                                                    </span>
+                                                </button>
+
+                                                {/* Detalle expandido */}
+                                                {isOpen && (
+                                                    <div style={{
+                                                        padding: '12px 16px 14px 72px',
+                                                        borderTop: '1px solid #e0e0e0',
+                                                        background: '#f9fbe7',
+                                                    }}>
+                                                        <div style={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                                                            gap: '10px 20px', fontSize: '0.82rem',
+                                                        }}>
+                                                            <div>
+                                                                <p style={{ color: '#888', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                                                    Fecha completa
+                                                                </p>
+                                                                <p style={{ color: '#333', margin: 0 }}>
+                                                                    {evDate.toLocaleDateString('es-CO', {
+                                                                        weekday: 'long', year: 'numeric',
+                                                                        month: 'long', day: 'numeric',
+                                                                    })}
+                                                                </p>
+                                                            </div>
+                                                            {ev.pointOfInterest && (
+                                                                <div>
+                                                                    <p style={{ color: '#888', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                                                        Punto de Interés
+                                                                    </p>
+                                                                    <p style={{ color: '#333', margin: 0 }}>
+                                                                        {ev.pointOfInterest.title}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                            {ev.description && (
+                                                                <div style={{ gridColumn: '1 / -1' }}>
+                                                                    <p style={{ color: '#888', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                                                        Descripción
+                                                                    </p>
+                                                                    <p style={{ color: '#555', margin: 0, lineHeight: 1.5 }}>
+                                                                        {ev.description}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div style={{
+                    padding: '12px 24px', borderTop: '1px solid #e0e0e0',
+                    flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                    <span style={{ fontSize: '0.8rem', color: '#888' }}>
+                        {filtered.length !== pastEvents.length
+                            ? `${filtered.length} de ${pastEvents.length} eventos`
+                            : `${pastEvents.length} eventos en total`}
+                    </span>
+                    <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ─── Main Component ─────────────────────────────────────────────────────
+const EventsManagement: React.FC = () => {
+    const [events, setEvents]               = useState<Event[]>([]);
+    const [areas, setAreas]                 = useState<Area[]>([]);
+    const [points, setPoints]               = useState<PointOfInterest[]>([]);
+    const [loading, setLoading]             = useState(true);
+    const [showModal, setShowModal]         = useState(false);
+    const [editingEvent, setEditingEvent]   = useState<Event | null>(null);
+    const [search, setSearch]               = useState('');
+    const [showHistorial, setShowHistorial] = useState(false);
+
+    useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         try {
@@ -219,7 +579,7 @@ const EventsManagement: React.FC = () => {
         try {
             await eventsService.delete(id);
             await loadData();
-        } catch (err) {
+        } catch {
             alert('Error al eliminar el evento');
         }
     };
@@ -227,11 +587,15 @@ const EventsManagement: React.FC = () => {
     const filtered = events.filter(e =>
         e.title.toLowerCase().includes(search.toLowerCase()) ||
         (e.category || '').toLowerCase().includes(search.toLowerCase()) ||
-        (e.location || '').toLowerCase().includes(search.toLowerCase())
+        (e.location  || '').toLowerCase().includes(search.toLowerCase())
     );
 
     if (loading) {
-        return <div className="dashboard-content"><div className="loading-spinner">Cargando eventos...</div></div>;
+        return (
+            <div className="dashboard-content">
+                <div className="loading-spinner">Cargando eventos...</div>
+            </div>
+        );
     }
 
     return (
@@ -239,13 +603,25 @@ const EventsManagement: React.FC = () => {
             <div className="content-header">
                 <div>
                     <h1>Gestión de Eventos</h1>
-                    <p style={{ color: '#8b949e', margin: '4px 0 0', fontSize: '0.85rem' }}>
+                    <p style={{ color: '#888', margin: '4px 0 0', fontSize: '0.85rem' }}>
                         {events.length} eventos · {events.filter(e => e.isPublished).length} publicados
                     </p>
                 </div>
-                <button className="btn btn-primary" onClick={() => { setEditingEvent(null); setShowModal(true); }}>
-                    + Crear Evento
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                        className="btn btn-secondary"
+                        onClick={() => setShowHistorial(true)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                        🕐 Historial
+                    </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => { setEditingEvent(null); setShowModal(true); }}
+                    >
+                        + Crear Evento
+                    </button>
+                </div>
             </div>
 
             <div className="search-bar">
@@ -275,8 +651,10 @@ const EventsManagement: React.FC = () => {
                     <tbody>
                         {filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: '#8b949e' }}>
-                                    {search ? 'No se encontraron eventos con ese criterio' : 'No hay eventos registrados'}
+                                <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
+                                    {search
+                                        ? 'No se encontraron eventos con ese criterio'
+                                        : 'No hay eventos registrados'}
                                 </td>
                             </tr>
                         ) : filtered.map(ev => (
@@ -284,13 +662,13 @@ const EventsManagement: React.FC = () => {
                                 <td>#{ev.id}</td>
                                 <td><strong>{ev.title}</strong></td>
                                 <td>{new Date(ev.eventDate).toLocaleDateString('es-CO')}</td>
-                                <td>{ev.location || <span style={{ color: '#8b949e' }}>—</span>}</td>
-                                <td>{ev.area?.name || <span style={{ color: '#8b949e' }}>—</span>}</td>
-                                <td>{ev.pointOfInterest?.title || <span style={{ color: '#8b949e' }}>—</span>}</td>
+                                <td>{ev.location || <span style={{ color: '#888' }}>—</span>}</td>
+                                <td>{ev.area?.name || <span style={{ color: '#888' }}>—</span>}</td>
+                                <td>{ev.pointOfInterest?.title || <span style={{ color: '#888' }}>—</span>}</td>
                                 <td>
-                                    {ev.category ? (
-                                        <span className="badge badge-info">{ev.category}</span>
-                                    ) : <span style={{ color: '#8b949e' }}>—</span>}
+                                    {ev.category
+                                        ? <span className="badge badge-info">{ev.category}</span>
+                                        : <span style={{ color: '#888' }}>—</span>}
                                 </td>
                                 <td>
                                     <span className={`status-badge ${ev.isPublished ? 'active' : 'inactive'}`}>
@@ -325,6 +703,10 @@ const EventsManagement: React.FC = () => {
                     onClose={() => setShowModal(false)}
                     onSave={async () => { setShowModal(false); await loadData(); }}
                 />
+            )}
+
+            {showHistorial && (
+                <HistorialModal onClose={() => setShowHistorial(false)} />
             )}
         </div>
     );

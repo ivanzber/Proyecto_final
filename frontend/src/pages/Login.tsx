@@ -7,7 +7,7 @@ import './Login.css';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();
-    const { setAuth } = useAuthStore();
+    const { setToken, fetchProfile } = useAuthStore();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -20,13 +20,22 @@ const Login: React.FC = () => {
         setLoading(true);
 
         try {
+            // 1. Login con credenciales cifradas - solo retorna accessToken
             const response = await authService.login({ email, password });
-            setAuth(response.user, response.accessToken);
 
-            // Redirigir según el rol
-            if (response.user.role === 'ADMIN') {
+            // 2. Guardar token en el store
+            setToken(response.accessToken);
+
+            // 3. Obtener perfil del usuario (datos vienen del backend, no del JWT)
+            await fetchProfile();
+
+            // 4. Obtener usuario actualizado del store para redirigir
+            const currentUser = useAuthStore.getState().user;
+
+            // 5. Redirigir según el rol
+            if (currentUser?.role === 'ADMIN') {
                 navigate('/admin');
-            } else if (response.user.role === 'SUBADMIN') {
+            } else if (currentUser?.role === 'SUBADMIN') {
                 navigate('/subadmin');
             } else {
                 navigate('/');

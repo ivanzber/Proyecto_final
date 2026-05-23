@@ -46,24 +46,17 @@ export class AuthService {
             lastLogin: new Date(),
         });
 
+        // Payload minimalista - solo el ID del usuario
+        // No incluir email, roleId ni roleName para evitar exposición de datos sensibles
         const payload = {
-            email: user.email,
             sub: user.id,
-            roleId: user.roleId,
-            roleName: user.role.name,
         };
 
         const accessToken = this.jwtService.sign(payload);
 
+        // Solo devolver el token - los datos del usuario se obtienen vía /auth/profile
         return {
             accessToken,
-            user: {
-                id: user.id,
-                email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                role: user.role.name,
-            },
         };
     }
 
@@ -77,8 +70,14 @@ export class AuthService {
             throw new UnauthorizedException('Usuario no encontrado');
         }
 
-        const { password, ...result } = user;
-        return result;
+        // Devolver solo los datos necesarios, sin información sensible
+        return {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role.name,
+        };
     }
 
     async hashPassword(password: string): Promise<string> {

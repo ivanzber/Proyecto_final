@@ -11,6 +11,7 @@ import { User, Role } from '../entities';
 
 @Module({
     imports: [
+        ConfigModule,
         TypeOrmModule.forFeature([User, Role]),
         PassportModule.register({ defaultStrategy: 'jwt' }),
         JwtModule.registerAsync({
