@@ -3,14 +3,16 @@ version: '3.8'
 services:
   # MySQL Database
   mysql:
-    image: mysql:8.0
+    image: mysql:8.0-debian
     container_name: campus_virtual_db
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASS}
       MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
@@ -18,9 +20,19 @@ services:
     networks:
       - campus_network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASS}" ]
       timeout: 20s
       retries: 10
+      interval: 10s
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
 
   # Backend API
   backend:
@@ -45,6 +57,20 @@ services:
         condition: service_healthy
     networks:
       - campus_network
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health" ]
+      timeout: 10s
+      retries: 3
+      interval: 30s
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+        reservations:
+          cpus: '0.75'
+          memory: 512M
 
   # Frontend (Nginx)
   frontend:
@@ -59,10 +85,27 @@ services:
       - backend
     networks:
       - campus_network
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/" ]
+      timeout: 10s
+      retries: 3
+      interval: 30s
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
 
 volumes:
   mysql_data:
+    driver: local
 
 networks:
   campus_network:
     driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-campus

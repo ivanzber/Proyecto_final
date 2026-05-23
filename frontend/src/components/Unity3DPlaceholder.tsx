@@ -223,17 +223,23 @@ const Unity3DPlaceholder: React.FC = () => {
 
         script.onload = () => {
             if (!canvasRef.current) return;
-            window.createUnityInstance(canvasRef.current, {
+            const w = window as any;
+            if (!w.createUnityInstance) {
+                setError('createUnityInstance no está disponible. Verifica el script de Unity.');
+                return;
+            }
+            
+            w.createUnityInstance(canvasRef.current, {
                 dataUrl:      '/unity-build/Build/webgl-build.data',
                 frameworkUrl: '/unity-build/Build/webgl-build.framework.js',
                 codeUrl:      '/unity-build/Build/webgl-build.wasm',
             }, (p: number) => setProgress(Math.round(p * 100)))
             .then((instance: any) => {
-                window.unityInstance = instance;
+                w.unityInstance = instance;
                 setLoading(false);
                 console.log('🎮 Unity WebGL cargado');
                 unity3dService.getWorldData()
-                    .then(w => instance.SendMessage('WebGLBridge', 'ReceiveNewsData', JSON.stringify(w)))
+                    .then(worldData => instance.SendMessage('WebGLBridge', 'ReceiveNewsData', JSON.stringify(worldData)))
                     .catch(() => {});
             })
             .catch((err: any) => setError('Error inicializando Unity: ' + err.message));

@@ -1,0 +1,16 @@
+node_modules
+dist
+npm-debug.log
+.env
+.env.local
+.env.*.local
+.git
+.gitignore
+.eslintrc.js
+README.md
+.DS_Store
+*.log
+coverage
+public/unity-build
+src/**/*.test.ts
+src/**/*.spec.ts

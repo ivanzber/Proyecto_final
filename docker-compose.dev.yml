@@ -1,0 +1,23 @@
+# Docker Compose Overrides for Development
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  backend:
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./backend/src:/app/src
+      - /app/node_modules
+    command: npm run start:dev
+
+  frontend:
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    volumes:
+      - ./frontend/src:/app/src
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: npm run dev
