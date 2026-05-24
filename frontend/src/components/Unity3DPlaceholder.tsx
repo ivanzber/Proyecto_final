@@ -101,7 +101,7 @@ const Unity3DPlaceholder: React.FC = () => {
     const formatHora = (time: string): string => {
         if (!time) return '';
         const [h, m] = time.split(':');
-        const hour = parseInt(h);
+        const hour = Number.parseInt(h);
         const ampm = hour >= 12 ? 'PM' : 'AM';
         const h12 = hour % 12 || 12;
         return `${h12}:${m} ${ampm}`;

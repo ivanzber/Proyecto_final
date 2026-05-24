@@ -69,7 +69,7 @@ const DashboardHome: React.FC = () => {
         const date = typeof d === 'string'
             ? new Date(d.length === 10 ? d + 'T00:00:00' : d)
             : new Date(d);
-        if (isNaN(date.getTime())) return String(d);
+        if (Number.isNaN(date.getTime())) return String(d);
         return `${date.getDate()}/${date.getMonth() + 1}`;
     };
 
@@ -78,7 +78,7 @@ const DashboardHome: React.FC = () => {
         const date = typeof d === 'string'
             ? new Date(d.length === 10 ? d + 'T00:00:00' : d)
             : new Date(d);
-        if (isNaN(date.getTime())) return String(d);
+        if (Number.isNaN(date.getTime())) return String(d);
         return date.toLocaleDateString('es-CO', {
             weekday: 'short', day: 'numeric', month: 'short'
         });
@@ -139,7 +139,7 @@ const DashboardHome: React.FC = () => {
                         : typeof v.date === 'string' && v.date.length > 10
                             ? v.date.split('T')[0]
                             : String(v.date),
-                    visits: parseInt(v.visits) || 0,
+                    visits: Number.parseInt(v.visits) || 0,
                 }));
 
                 const areasFinal = areasData.length > 0

@@ -1013,7 +1013,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                     <div className="form-group">
                         <label htmlFor="ev-pub" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <input id="ev-pub" type="checkbox" checked={eventForm.isPublished}
-                                onChange={e => setEventForm({ ...eventForm, isPublished: e.target.checked })} />
+                                onChange={e => setEventForm({ ...eventForm, isPublished: e.target.checked })} /> {' '}
                             Publicar inmediatamente
                         </label>
                     </div>
@@ -1056,7 +1056,7 @@ const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
                     <div className="form-group">
                         <label htmlFor="ns-pub" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <input id="ns-pub" type="checkbox" checked={newsForm.isPublished}
-                                onChange={e => setNewsForm({ ...newsForm, isPublished: e.target.checked })} />
+                                onChange={e => setNewsForm({ ...newsForm, isPublished: e.target.checked })} />{' '}
                             Publicar inmediatamente
                         </label>
                     </div>

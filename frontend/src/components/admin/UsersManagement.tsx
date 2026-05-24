@@ -17,12 +17,12 @@ const UserModal: React.FC<{
     onSave: () => void;
 }> = ({ user, onClose, onSave }) => {
     const [formData, setFormData] = useState({
-        email:     user?.email     || '',
+        email: user?.email || '',
         firstName: user?.firstName || '',
-        lastName:  user?.lastName  || '',
-        password:  '',
-        roleId:    user?.roleId    || 1,
-        isActive:  user?.isActive  ?? true,
+        lastName: user?.lastName || '',
+        password: '',
+        roleId: user?.roleId || 1,
+        isActive: user?.isActive ?? true,
     });
 
     // ✅ Escape via useEffect — sin onKeyDown en div
@@ -33,11 +33,11 @@ const UserModal: React.FC<{
         try {
             if (user) {
                 const updateData: any = {
-                    email:     formData.email,
+                    email: formData.email,
                     firstName: formData.firstName,
-                    lastName:  formData.lastName,
-                    roleId:    formData.roleId,
-                    isActive:  formData.isActive,
+                    lastName: formData.lastName,
+                    roleId: formData.roleId,
+                    isActive: formData.isActive,
                 };
                 if (formData.password) updateData.password = formData.password;
                 await usersService.update(user.id, updateData);
@@ -141,7 +141,7 @@ const UserModal: React.FC<{
                                 type="checkbox"
                                 checked={formData.isActive}
                                 onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
-                            />
+                            /> {' '}
                             Activo
                         </label>
                     </div>
@@ -161,9 +161,9 @@ const UserModal: React.FC<{
 
 // ─── Main Component ───────────────────────────────────────────────────
 const UsersManagement: React.FC = () => {
-    const [users, setUsers]           = useState<User[]>([]);
-    const [loading, setLoading]       = useState(true);
-    const [showModal, setShowModal]   = useState(false);
+    const [users, setUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
 
     useEffect(() => { loadUsers(); }, []);
