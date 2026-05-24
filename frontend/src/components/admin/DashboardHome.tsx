@@ -372,47 +372,68 @@ const DashboardHome: React.FC = () => {
 
             {/* ── Tarjetas con navegación ───────────────────────── */}
             <div className="stats-grid">
-                {cards.map(c => (
-                    <div
-                        key={c.label}
-                        className="stat-card"
-                        onClick={() => c.path && navigate(c.path)}
-                        style={{
-                            cursor: c.path ? 'pointer' : 'default',
-                            transition: 'transform 0.15s, box-shadow 0.15s',
-                        }}
-                        onMouseEnter={e => {
-                            if (!c.path) return;
-                            const el = e.currentTarget as HTMLDivElement;
-                            el.style.transform = 'translateY(-4px)';
-                            el.style.boxShadow = '0 8px 24px rgba(0,0,0,0.13)';
-                        }}
-                        onMouseLeave={e => {
-                            const el = e.currentTarget as HTMLDivElement;
-                            el.style.transform = 'translateY(0)';
-                            el.style.boxShadow = '';
-                        }}
-                    >
-                        <div className="stat-icon"
-                            style={{ background: `linear-gradient(135deg,${c.grad})` }}>
-                            {c.icon}
+                {cards.map(c => {
+                    const inner = (
+                        <>
+                            <div className="stat-icon"
+                                style={{ background: `linear-gradient(135deg,${c.grad})` }}>
+                                {c.icon}
+                            </div>
+                            <div className="stat-info">
+                                <h3>{c.label}</h3>
+                                <p className="stat-number">{c.num}</p>
+                                <span className="stat-label">
+                                    {c.sub}
+                                    {c.path && (
+                                        <span style={{
+                                            marginLeft: 6, fontSize: 11,
+                                            color: '#aaa', fontWeight: 400,
+                                        }}>→</span>
+                                    )}
+                                </span>
+                            </div>
+                        </>
+                    );
+
+                    // Tarjeta CON navegación → <button> (elemento interactivo ✅ sin warning)
+                    if (c.path) {
+                        return (
+                            <button
+                                key={c.label}
+                                type="button"
+                                className="stat-card"
+                                onClick={() => navigate(c.path!)}
+                                onKeyDown={e => e.key === 'Enter' && navigate(c.path!)}
+                                style={{
+                                    cursor: 'pointer', textAlign: 'left',
+                                    background: 'none', border: 'none', width: '100%',
+                                    transition: 'transform 0.15s, box-shadow 0.15s',
+                                }}
+                                onMouseEnter={e => {
+                                    const el = e.currentTarget as HTMLButtonElement;
+                                    el.style.transform = 'translateY(-4px)';
+                                    el.style.boxShadow = '0 8px 24px rgba(0,0,0,0.13)';
+                                }}
+                                onMouseLeave={e => {
+                                    const el = e.currentTarget as HTMLButtonElement;
+                                    el.style.transform = 'translateY(0)';
+                                    el.style.boxShadow = '';
+                                }}
+                            >
+                                {inner}
+                            </button>
+                        );
+                    }
+
+                    // Tarjeta SIN navegación → <div> sin onClick (sin warning ✅)
+                    return (
+                        <div key={c.label} className="stat-card">
+                            {inner}
                         </div>
-                        <div className="stat-info">
-                            <h3>{c.label}</h3>
-                            <p className="stat-number">{c.num}</p>
-                            <span className="stat-label">
-                                {c.sub}
-                                {c.path && (
-                                    <span style={{
-                                        marginLeft: 6, fontSize: 11,
-                                        color: '#aaa', fontWeight: 400
-                                    }}>→</span>
-                                )}
-                            </span>
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
+
 
             {/* ── Gráficas ─────────────────────────────────────── */}
             <div className="charts-grid">

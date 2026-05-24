@@ -2,17 +2,64 @@ import React, { useEffect, useState } from 'react';
 import { areasService, Area, CreateAreaDto } from '@/services/areasService';
 import { usersService, User } from '@/services/usersService';
 
+// ── Componente reutilizable de Modal accesible ────────────────────────────────
+// Backdrop = <button> (elemento interactivo, sin warnings)
+// Diálogo  = <div role="dialog"> con onKeyDown para Escape
+const Modal: React.FC<{
+    id: string;
+    title: string;
+    onClose: () => void;
+    children: React.ReactNode;
+    footer: React.ReactNode;
+}> = ({ id, title, onClose, children, footer }) => (
+    <div className="modal-overlay">
+        {/* Backdrop como <button> — elemento interactivo → sin warning jsx-a11y */}
+        <button
+            type="button"
+            className="modal-backdrop-btn"
+            onClick={onClose}
+            aria-label="Cerrar modal"
+            style={{
+                position: 'fixed', inset: 0,
+                background: 'transparent', border: 'none',
+                cursor: 'default', width: '100%', height: '100%',
+            }}
+        />
+        {/* Diálogo por encima del backdrop */}
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`${id}-title`}
+            className="modal-content"
+            onKeyDown={e => {
+                if (e.key === 'Escape') onClose();
+                e.stopPropagation();
+            }}
+            tabIndex={-1}
+            style={{ position: 'relative', zIndex: 1 }}
+        >
+            <div className="modal-header">
+                <h2 id={`${id}-title`}>{title}</h2>
+                <button className="modal-close" onClick={onClose} aria-label="Cerrar">✕</button>
+            </div>
+            <div className="modal-body">{children}</div>
+            <div className="modal-footer">{footer}</div>
+        </div>
+    </div>
+);
+
+// ── Componente principal ──────────────────────────────────────────────────────
 const AreasManagement: React.FC = () => {
-    const [areas, setAreas] = useState<Area[]>([]);
-    const [subadmins, setSubadmins] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [showAssign, setShowAssign] = useState(false);
-    const [editingArea, setEditingArea] = useState<Area | null>(null);
+    const [areas, setAreas]               = useState<Area[]>([]);
+    const [subadmins, setSubadmins]       = useState<User[]>([]);
+    const [loading, setLoading]           = useState(true);
+    const [showModal, setShowModal]       = useState(false);
+    const [showAssign, setShowAssign]     = useState(false);
+    const [editingArea, setEditingArea]   = useState<Area | null>(null);
     const [selectedArea, setSelectedArea] = useState<Area | null>(null);
     const [assignedUsers, setAssignedUsers] = useState<number[]>([]);
-    const [saving, setSaving] = useState(false);
-    const [form, setForm] = useState<CreateAreaDto>({
+    const [saving, setSaving]             = useState(false);
+    const [form, setForm]                 = useState<CreateAreaDto>({
         name: '', code: '', description: '', isActive: true,
     });
 
@@ -43,10 +90,8 @@ const AreasManagement: React.FC = () => {
     const openEdit = (area: Area) => {
         setEditingArea(area);
         setForm({
-            name: area.name,
-            code: area.code,
-            description: area.description || '',
-            isActive: area.isActive,
+            name: area.name, code: area.code,
+            description: area.description || '', isActive: area.isActive,
         });
         setShowModal(true);
     };
@@ -239,187 +284,81 @@ const AreasManagement: React.FC = () => {
 
             {/* ── Modal Crear/Editar área ────────────────────────── */}
             {showModal && (
-                <div
-                    className="modal-overlay"
-                    onClick={() => setShowModal(false)}
-                    onKeyDown={e => e.key === 'Escape' && setShowModal(false)}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="modal-area-title"
-                    tabIndex={-1}
-                >
-                    <div
-                        className="modal-content"
-                        onClick={e => e.stopPropagation()}
-                        onKeyDown={e => e.stopPropagation()}
-                    >
-                        <div className="modal-header">
-                            <h2 id="modal-area-title">
-                                {editingArea ? 'Editar Área' : 'Nueva Área'}
-                            </h2>
-                            <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
-                        </div>
-                        <div className="modal-body">
-
-                            <div className="form-group">
-                                <label htmlFor="area-name">Nombre *</label>
-                                <input
-                                    id="area-name"
-                                    className="form-control"
-                                    value={form.name}
-                                    onChange={e => setForm({ ...form, name: e.target.value })}
-                                    placeholder="Ej: Zonas Deportivas"
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label htmlFor="area-code">Código único *</label>
-                                <input
-                                    id="area-code"
-                                    className="form-control"
-                                    value={form.code}
-                                    onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                                    placeholder="Ej: DEPORTES"
-                                    disabled={!!editingArea}
-                                />
-                                {editingArea && (
-                                    <small style={{ color: '#999' }}>El código no se puede modificar</small>
-                                )}
-                            </div>
-
-                            <div className="form-group">
-                                <label htmlFor="area-desc">Descripción</label>
-                                <textarea
-                                    id="area-desc"
-                                    className="form-control"
-                                    value={form.description}
-                                    onChange={e => setForm({ ...form, description: e.target.value })}
-                                    placeholder="Descripción del área..."
-                                    rows={3}
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label htmlFor="area-active" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <input
-                                        id="area-active"
-                                        type="checkbox"
-                                        checked={form.isActive}
-                                        onChange={e => setForm({ ...form, isActive: e.target.checked })}
-                                    />
-                                    Área activa
-                                </label>
-                            </div>
-
-                        </div>
-                        <div className="modal-footer">
+                <Modal
+                    id="modal-area"
+                    title={editingArea ? 'Editar Área' : 'Nueva Área'}
+                    onClose={() => setShowModal(false)}
+                    footer={
+                        <>
                             <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
                                 Cancelar
                             </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleSave}
-                                disabled={saving}
-                            >
+                            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                                 {saving ? 'Guardando...' : editingArea ? 'Actualizar' : 'Crear Área'}
                             </button>
-                        </div>
+                        </>
+                    }
+                >
+                    <div className="form-group">
+                        <label htmlFor="area-name">Nombre *</label>
+                        <input
+                            id="area-name"
+                            className="form-control"
+                            value={form.name}
+                            onChange={e => setForm({ ...form, name: e.target.value })}
+                            placeholder="Ej: Zonas Deportivas"
+                        />
                     </div>
-                </div>
+
+                    <div className="form-group">
+                        <label htmlFor="area-code">Código único *</label>
+                        <input
+                            id="area-code"
+                            className="form-control"
+                            value={form.code}
+                            onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                            placeholder="Ej: DEPORTES"
+                            disabled={!!editingArea}
+                        />
+                        {editingArea && (
+                            <small style={{ color: '#999' }}>El código no se puede modificar</small>
+                        )}
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="area-desc">Descripción</label>
+                        <textarea
+                            id="area-desc"
+                            className="form-control"
+                            value={form.description}
+                            onChange={e => setForm({ ...form, description: e.target.value })}
+                            placeholder="Descripción del área..."
+                            rows={3}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="area-active" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input
+                                id="area-active"
+                                type="checkbox"
+                                checked={form.isActive}
+                                onChange={e => setForm({ ...form, isActive: e.target.checked })}
+                            />
+                            Área activa
+                        </label>
+                    </div>
+                </Modal>
             )}
 
             {/* ── Modal Asignar subadmins ────────────────────────── */}
             {showAssign && selectedArea && (
-                <div
-                    className="modal-overlay"
-                    onClick={() => setShowAssign(false)}
-                    onKeyDown={e => e.key === 'Escape' && setShowAssign(false)}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="modal-assign-title"
-                    tabIndex={-1}
-                >
-                    <div
-                        className="modal-content"
-                        onClick={e => e.stopPropagation()}
-                        onKeyDown={e => e.stopPropagation()}
-                    >
-                        <div className="modal-header">
-                            <h2 id="modal-assign-title">Asignar Subadministradores</h2>
-                            <button className="modal-close" onClick={() => setShowAssign(false)}>✕</button>
-                        </div>
-                        <div className="modal-body">
-
-                            <div style={{
-                                background: '#f0f4f0', borderRadius: 8,
-                                padding: '10px 14px', marginBottom: 16,
-                                display: 'flex', alignItems: 'center', gap: 8,
-                            }}>
-                                <span>📍</span>
-                                <div>
-                                    <strong>{selectedArea.name}</strong>
-                                    <div style={{ fontSize: 12, color: '#666' }}>
-                                        Código: {selectedArea.code}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {subadmins.length === 0 ? (
-                                <div style={{ textAlign: 'center', color: '#aaa', padding: 24 }}>
-                                    <p>No hay subadministradores registrados.</p>
-                                    <p style={{ fontSize: 13 }}>
-                                        Crea un usuario con rol SUBADMIN primero.
-                                    </p>
-                                </div>
-                            ) : (
-                                <>
-                                    <p style={{ color: '#666', fontSize: 14, marginBottom: 12 }}>
-                                        Selecciona los subadministradores que gestionarán esta área:
-                                    </p>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        {subadmins.map(sub => (
-                                            <label
-                                                key={sub.id}
-                                                htmlFor={`sub-${sub.id}`}
-                                                style={{
-                                                    display: 'flex', alignItems: 'center', gap: 12,
-                                                    padding: '10px 14px', borderRadius: 8,
-                                                    border: `1px solid ${assignedUsers.includes(sub.id) ? '#a5d6a7' : '#e0e0e0'}`,
-                                                    background: assignedUsers.includes(sub.id) ? '#f1f8f1' : '#fafafa',
-                                                    cursor: 'pointer', transition: 'all 0.15s',
-                                                }}
-                                            >
-                                                <input
-                                                    id={`sub-${sub.id}`}
-                                                    type="checkbox"
-                                                    checked={assignedUsers.includes(sub.id)}
-                                                    onChange={() => toggleSubadmin(sub.id)}
-                                                    style={{ width: 16, height: 16 }}
-                                                />
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontWeight: 500 }}>
-                                                        {sub.firstName} {sub.lastName}
-                                                    </div>
-                                                    <div style={{ fontSize: 12, color: '#888' }}>
-                                                        {sub.email}
-                                                    </div>
-                                                </div>
-                                                {assignedUsers.includes(sub.id) && (
-                                                    <span style={{
-                                                        background: '#e8f5e9', color: '#2e7d32',
-                                                        fontSize: 11, padding: '2px 8px',
-                                                        borderRadius: 10, fontWeight: 600,
-                                                    }}>
-                                                        ✓ Asignado
-                                                    </span>
-                                                )}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                        <div className="modal-footer">
+                <Modal
+                    id="modal-assign"
+                    title="Asignar Subadministradores"
+                    onClose={() => setShowAssign(false)}
+                    footer={
+                        <>
                             <button className="btn btn-secondary" onClick={() => setShowAssign(false)}>
                                 Cancelar
                             </button>
@@ -430,9 +369,72 @@ const AreasManagement: React.FC = () => {
                             >
                                 {saving ? 'Guardando...' : 'Guardar Asignaciones'}
                             </button>
+                        </>
+                    }
+                >
+                    <div style={{
+                        background: '#f0f4f0', borderRadius: 8,
+                        padding: '10px 14px', marginBottom: 16,
+                        display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                        <span>📍</span>
+                        <div>
+                            <strong>{selectedArea.name}</strong>
+                            <div style={{ fontSize: 12, color: '#666' }}>Código: {selectedArea.code}</div>
                         </div>
                     </div>
-                </div>
+
+                    {subadmins.length === 0 ? (
+                        <div style={{ textAlign: 'center', color: '#aaa', padding: 24 }}>
+                            <p>No hay subadministradores registrados.</p>
+                            <p style={{ fontSize: 13 }}>Crea un usuario con rol SUBADMIN primero.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <p style={{ color: '#666', fontSize: 14, marginBottom: 12 }}>
+                                Selecciona los subadministradores que gestionarán esta área:
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {subadmins.map(sub => (
+                                    <label
+                                        key={sub.id}
+                                        htmlFor={`sub-${sub.id}`}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 12,
+                                            padding: '10px 14px', borderRadius: 8,
+                                            border: `1px solid ${assignedUsers.includes(sub.id) ? '#a5d6a7' : '#e0e0e0'}`,
+                                            background: assignedUsers.includes(sub.id) ? '#f1f8f1' : '#fafafa',
+                                            cursor: 'pointer', transition: 'all 0.15s',
+                                        }}
+                                    >
+                                        <input
+                                            id={`sub-${sub.id}`}
+                                            type="checkbox"
+                                            checked={assignedUsers.includes(sub.id)}
+                                            onChange={() => toggleSubadmin(sub.id)}
+                                            style={{ width: 16, height: 16 }}
+                                        />
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 500 }}>
+                                                {sub.firstName} {sub.lastName}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: '#888' }}>{sub.email}</div>
+                                        </div>
+                                        {assignedUsers.includes(sub.id) && (
+                                            <span style={{
+                                                background: '#e8f5e9', color: '#2e7d32',
+                                                fontSize: 11, padding: '2px 8px',
+                                                borderRadius: 10, fontWeight: 600,
+                                            }}>
+                                                ✓ Asignado
+                                            </span>
+                                        )}
+                                    </label>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </Modal>
             )}
         </div>
     );
