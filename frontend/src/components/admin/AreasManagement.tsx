@@ -64,16 +64,16 @@ const Modal: React.FC<{
 
 // ── Componente principal ──────────────────────────────────────────────────────
 const AreasManagement: React.FC = () => {
-    const [areas, setAreas]               = useState<Area[]>([]);
-    const [subadmins, setSubadmins]       = useState<User[]>([]);
-    const [loading, setLoading]           = useState(true);
-    const [showModal, setShowModal]       = useState(false);
-    const [showAssign, setShowAssign]     = useState(false);
-    const [editingArea, setEditingArea]   = useState<Area | null>(null);
+    const [areas, setAreas] = useState<Area[]>([]);
+    const [subadmins, setSubadmins] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
+    const [showAssign, setShowAssign] = useState(false);
+    const [editingArea, setEditingArea] = useState<Area | null>(null);
     const [selectedArea, setSelectedArea] = useState<Area | null>(null);
     const [assignedUsers, setAssignedUsers] = useState<number[]>([]);
-    const [saving, setSaving]             = useState(false);
-    const [form, setForm]                 = useState<CreateAreaDto>({
+    const [saving, setSaving] = useState(false);
+    const [form, setForm] = useState<CreateAreaDto>({
         name: '', code: '', description: '', isActive: true,
     });
 
@@ -360,7 +360,7 @@ const AreasManagement: React.FC = () => {
                                 type="checkbox"
                                 checked={form.isActive}
                                 onChange={e => setForm({ ...form, isActive: e.target.checked })}
-                            />
+                            /> {' '}
                             Área activa
                         </label>
                     </div>

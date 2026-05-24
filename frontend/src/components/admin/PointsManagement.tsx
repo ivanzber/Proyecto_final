@@ -2,6 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { pointsService, PointOfInterest, CreatePointDto } from '@/services/pointsService';
 import { areasService, Area } from '@/services/areasService';
 
+// ── Hook: cerrar modal con Escape ─────────────────────────────────────────────
+function useEscapeKey(handler: () => void) {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handler(); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [handler]);
+}
+
 // ─── Modal ────────────────────────────────────────────────────────────
 const PointModal: React.FC<{
     point: PointOfInterest | null;
@@ -10,29 +19,32 @@ const PointModal: React.FC<{
     onSave: () => void;
 }> = ({ point, areas, onClose, onSave }) => {
     const [formData, setFormData] = useState({
-        title: point?.title || '',
+        title:       point?.title       || '',
         description: point?.description || '',
-        areaId: point?.areaId || (areas[0]?.id ?? 0),
-        category: point?.category || '',
-        isVisible: point?.isVisible ?? true,
-        orderIndex: point?.orderIndex ?? 0,
-        iconUrl: point?.iconUrl || '',
+        areaId:      point?.areaId      || (areas[0]?.id ?? 0),
+        category:    point?.category    || '',
+        isVisible:   point?.isVisible   ?? true,
+        orderIndex:  point?.orderIndex  ?? 0,
+        iconUrl:     point?.iconUrl     || '',
     });
     const [saving, setSaving] = useState(false);
+
+    // ✅ Escape via useEffect — sin onKeyDown en div
+    useEscapeKey(onClose);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSaving(true);
         try {
             const payload: CreatePointDto = {
-                title: formData.title,
+                title:       formData.title,
                 description: formData.description || undefined,
-                areaId: Number(formData.areaId),
-                category: formData.category || undefined,
+                areaId:      Number(formData.areaId),
+                category:    formData.category    || undefined,
                 coordinates: {},
-                isVisible: formData.isVisible,
-                orderIndex: Number(formData.orderIndex),
-                iconUrl: formData.iconUrl || undefined,
+                isVisible:   formData.isVisible,
+                orderIndex:  Number(formData.orderIndex),
+                iconUrl:     formData.iconUrl      || undefined,
             };
             if (point) {
                 await pointsService.update(point.id, payload);
@@ -48,16 +60,38 @@ const PointModal: React.FC<{
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
+        // ✅ Backdrop como <button> — elemento interactivo, sin warning
+        <div className="modal-overlay">
+            <button
+                type="button"
+                aria-label="Cerrar modal"
+                onClick={onClose}
+                style={{
+                    position: 'fixed', inset: 0,
+                    background: 'transparent', border: 'none',
+                    cursor: 'default', width: '100%', height: '100%',
+                }}
+            />
+            {/* ✅ role="dialog" sin onKeyDown — Escape lo maneja useEscapeKey */}
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="point-modal-title"
+                className="modal-content"
+                tabIndex={-1}
+                style={{ position: 'relative', zIndex: 1 }}
+            >
                 <div className="modal-header">
-                    <h2>{point ? 'Editar Punto' : 'Nuevo Punto de Interés'}</h2>
-                    <button className="modal-close" onClick={onClose}>×</button>
+                    <h2 id="point-modal-title">
+                        {point ? 'Editar Punto' : 'Nuevo Punto de Interés'}
+                    </h2>
+                    <button type="button" className="modal-close" onClick={onClose}>×</button>
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Título *</label>
+                        <label htmlFor="pt-title">Título *</label>
                         <input
+                            id="pt-title"
                             type="text"
                             value={formData.title}
                             onChange={e => setFormData({ ...formData, title: e.target.value })}
@@ -66,8 +100,9 @@ const PointModal: React.FC<{
                         />
                     </div>
                     <div className="form-group">
-                        <label>Descripción</label>
+                        <label htmlFor="pt-desc">Descripción</label>
                         <textarea
+                            id="pt-desc"
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
                             rows={3}
@@ -76,8 +111,9 @@ const PointModal: React.FC<{
                     </div>
                     <div className="form-row">
                         <div className="form-group">
-                            <label>Área *</label>
+                            <label htmlFor="pt-area">Área *</label>
                             <select
+                                id="pt-area"
                                 value={formData.areaId}
                                 onChange={e => setFormData({ ...formData, areaId: Number(e.target.value) })}
                                 required
@@ -88,8 +124,9 @@ const PointModal: React.FC<{
                             </select>
                         </div>
                         <div className="form-group">
-                            <label>Categoría</label>
+                            <label htmlFor="pt-cat">Categoría</label>
                             <select
+                                id="pt-cat"
                                 value={formData.category}
                                 onChange={e => setFormData({ ...formData, category: e.target.value })}
                             >
@@ -106,8 +143,9 @@ const PointModal: React.FC<{
                     </div>
                     <div className="form-row">
                         <div className="form-group">
-                            <label>Orden</label>
+                            <label htmlFor="pt-order">Orden</label>
                             <input
+                                id="pt-order"
                                 type="number"
                                 value={formData.orderIndex}
                                 onChange={e => setFormData({ ...formData, orderIndex: Number(e.target.value) })}
@@ -115,8 +153,9 @@ const PointModal: React.FC<{
                             />
                         </div>
                         <div className="form-group">
-                            <label>URL Ícono</label>
+                            <label htmlFor="pt-icon">URL Ícono</label>
                             <input
+                                id="pt-icon"
                                 type="text"
                                 value={formData.iconUrl}
                                 onChange={e => setFormData({ ...formData, iconUrl: e.target.value })}
@@ -125,8 +164,9 @@ const PointModal: React.FC<{
                         </div>
                     </div>
                     <div className="form-group">
-                        <label className="checkbox-label">
+                        <label htmlFor="pt-visible" className="checkbox-label">
                             <input
+                                id="pt-visible"
                                 type="checkbox"
                                 checked={formData.isVisible}
                                 onChange={e => setFormData({ ...formData, isVisible: e.target.checked })}
@@ -150,16 +190,14 @@ const PointModal: React.FC<{
 
 // ─── Main Component ───────────────────────────────────────────────────
 const PointsManagement: React.FC = () => {
-    const [points, setPoints] = useState<PointOfInterest[]>([]);
-    const [areas, setAreas] = useState<Area[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
+    const [points, setPoints]           = useState<PointOfInterest[]>([]);
+    const [areas, setAreas]             = useState<Area[]>([]);
+    const [loading, setLoading]         = useState(true);
+    const [showModal, setShowModal]     = useState(false);
     const [editingPoint, setEditingPoint] = useState<PointOfInterest | null>(null);
-    const [search, setSearch] = useState('');
+    const [search, setSearch]           = useState('');
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         try {
@@ -183,7 +221,7 @@ const PointsManagement: React.FC = () => {
         try {
             await pointsService.delete(id);
             await loadData();
-        } catch (err) {
+        } catch {
             alert('Error al eliminar el punto');
         }
     };
@@ -194,7 +232,11 @@ const PointsManagement: React.FC = () => {
     );
 
     if (loading) {
-        return <div className="dashboard-content"><div className="loading-spinner">Cargando puntos de interés...</div></div>;
+        return (
+            <div className="dashboard-content">
+                <div className="loading-spinner">Cargando puntos de interés...</div>
+            </div>
+        );
     }
 
     return (
@@ -206,7 +248,11 @@ const PointsManagement: React.FC = () => {
                         {points.length} puntos registrados en el campus
                     </p>
                 </div>
-                <button className="btn btn-primary" onClick={() => { setEditingPoint(null); setShowModal(true); }}>
+                <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => { setEditingPoint(null); setShowModal(true); }}
+                >
                     + Agregar Punto
                 </button>
             </div>
@@ -237,7 +283,9 @@ const PointsManagement: React.FC = () => {
                         {filtered.length === 0 ? (
                             <tr>
                                 <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#8b949e' }}>
-                                    {search ? 'No se encontraron puntos con ese criterio' : 'No hay puntos de interés registrados'}
+                                    {search
+                                        ? 'No se encontraron puntos con ese criterio'
+                                        : 'No hay puntos de interés registrados'}
                                 </td>
                             </tr>
                         ) : filtered.map(point => (
@@ -246,9 +294,9 @@ const PointsManagement: React.FC = () => {
                                 <td><strong>{point.title}</strong></td>
                                 <td>{point.area?.name || `Area ${point.areaId}`}</td>
                                 <td>
-                                    {point.category ? (
-                                        <span className="badge badge-info">{point.category}</span>
-                                    ) : <span style={{ color: '#8b949e' }}>—</span>}
+                                    {point.category
+                                        ? <span className="badge badge-info">{point.category}</span>
+                                        : <span style={{ color: '#8b949e' }}>—</span>}
                                 </td>
                                 <td>{point.orderIndex}</td>
                                 <td>
@@ -259,11 +307,13 @@ const PointsManagement: React.FC = () => {
                                 <td>
                                     <div className="action-buttons">
                                         <button
+                                            type="button"
                                             className="btn btn-sm btn-secondary"
                                             onClick={() => { setEditingPoint(point); setShowModal(true); }}
                                             title="Editar"
                                         >✏️</button>
                                         <button
+                                            type="button"
                                             className="btn btn-sm btn-danger"
                                             onClick={() => handleDelete(point.id)}
                                             title="Eliminar"

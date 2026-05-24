@@ -37,10 +37,19 @@ const useMyAreas = (userId?: number) => {
     return { areas, loading, reload: load };
 };
 
+// ── Hook: cerrar modal con Escape ────────────────────────────────────────────
+function useEscapeKey(handler: () => void) {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handler(); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [handler]);
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // COMPONENTE: Modal accesible reutilizable
-// Backdrop = <button> interactivo (sin warning jsx-a11y)
-// Diálogo  = <div role="dialog"> con onKeyDown para Escape
+// Backdrop = <button> (interactivo, sin warning jsx-a11y)
+// Diálogo  = <div role="dialog"> sin onKeyDown (Escape via useEscapeKey)
 // ══════════════════════════════════════════════════════════════════════════════
 const Modal: React.FC<{
     id: string;
@@ -66,12 +75,13 @@ const Modal: React.FC<{
             aria-modal="true"
             aria-labelledby={`${id}-title`}
             className="modal-content"
-            onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }}
             tabIndex={-1}
             style={{
                 position: 'relative', zIndex: 1,
-                ...(wide ? { maxWidth: 780, width: '95%', maxHeight: '88vh',
-                             display: 'flex', flexDirection: 'column' } : {}),
+                ...(wide ? {
+                    maxWidth: 780, width: '95%', maxHeight: '88vh',
+                    display: 'flex', flexDirection: 'column'
+                } : {}),
             }}
         >
             <div className="modal-header" style={{ flexShrink: 0 }}>
@@ -84,15 +94,16 @@ const Modal: React.FC<{
     </div>
 );
 
+
 // ══════════════════════════════════════════════════════════════════════════════
 // HELPERS para el modal de historial
 // ══════════════════════════════════════════════════════════════════════════════
 const CATEGORY_COLORS: Record<string, string> = {
-    ACADEMICO:     '#1a7f37',
-    CULTURAL:      '#6639ba',
-    DEPORTIVO:     '#0969da',
+    ACADEMICO: '#1a7f37',
+    CULTURAL: '#6639ba',
+    DEPORTIVO: '#0969da',
     INSTITUCIONAL: '#bc4c00',
-    OTRO:          '#57606a',
+    OTRO: '#57606a',
 };
 
 function timeAgo(dateStr: string): string {
@@ -100,8 +111,8 @@ function timeAgo(dateStr: string): string {
     const days = Math.floor(diff / 86_400_000);
     if (days === 0) return 'hoy';
     if (days === 1) return 'ayer';
-    if (days < 7)   return `hace ${days} días`;
-    if (days < 30)  return `hace ${Math.floor(days / 7)} sem.`;
+    if (days < 7) return `hace ${days} días`;
+    if (days < 30) return `hace ${Math.floor(days / 7)} sem.`;
     if (days < 365) return `hace ${Math.floor(days / 30)} meses`;
     return `hace ${Math.floor(days / 365)} años`;
 }
@@ -115,11 +126,11 @@ const HistorialModal: React.FC<{
     onClose: () => void;
 }> = ({ areaIds, areaName, onClose }) => {
     const [pastEvents, setPastEvents] = useState<Event[]>([]);
-    const [loading, setLoading]       = useState(true);
-    const [search, setSearch]         = useState('');
-    const [catFilter, setCatFilter]   = useState('');
-    const [dateFrom, setDateFrom]     = useState('');
-    const [dateTo, setDateTo]         = useState('');
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [catFilter, setCatFilter] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
     const [expandedId, setExpandedId] = useState<number | null>(null);
 
     useEffect(() => {
@@ -142,12 +153,12 @@ const HistorialModal: React.FC<{
     const filtered = pastEvents.filter(e => {
         const matchSearch =
             e.title.toLowerCase().includes(search.toLowerCase()) ||
-            (e.location  || '').toLowerCase().includes(search.toLowerCase()) ||
-            (e.category  || '').toLowerCase().includes(search.toLowerCase());
-        const matchCat  = !catFilter || e.category === catFilter;
-        const evDate    = new Date(e.eventDate);
+            (e.location || '').toLowerCase().includes(search.toLowerCase()) ||
+            (e.category || '').toLowerCase().includes(search.toLowerCase());
+        const matchCat = !catFilter || e.category === catFilter;
+        const evDate = new Date(e.eventDate);
         const matchFrom = !dateFrom || evDate >= new Date(dateFrom);
-        const matchTo   = !dateTo   || evDate <= new Date(dateTo);
+        const matchTo = !dateTo || evDate <= new Date(dateTo);
         return matchSearch && matchCat && matchFrom && matchTo;
     });
 
@@ -161,6 +172,9 @@ const HistorialModal: React.FC<{
 
     const hasFilters = !!(search || catFilter || dateFrom || dateTo);
     const clearFilters = () => { setSearch(''); setCatFilter(''); setDateFrom(''); setDateTo(''); };
+
+    // ✅ Escape via useEffect en document — sin onKeyDown en div
+    useEscapeKey(onClose);
 
     return (
         <div className="modal-overlay">
@@ -179,7 +193,6 @@ const HistorialModal: React.FC<{
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="historial-title"
-                onKeyDown={e => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }}
                 tabIndex={-1}
                 style={{
                     position: 'relative', zIndex: 1,
@@ -313,7 +326,7 @@ const HistorialModal: React.FC<{
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                     {evs.map(ev => {
                                         const isOpen = expandedId === ev.id;
-                                        const color  = CATEGORY_COLORS[ev.category || ''] || '#57606a';
+                                        const color = CATEGORY_COLORS[ev.category || ''] || '#57606a';
                                         const evDate = new Date(ev.eventDate);
 
                                         return (
@@ -615,15 +628,15 @@ const SubadminHome: React.FC<{ userId?: number }> = ({ userId }) => {
 const MyAreasPage: React.FC<{ userId?: number }> = ({ userId }) => {
     const { areas, loading } = useMyAreas(userId);
 
-    const [selectedArea, setSelectedArea]   = useState<Area | null>(null);
-    const [tab, setTab]                     = useState<'eventos' | 'noticias'>('eventos');
-    const [eventos, setEventos]             = useState<Event[]>([]);
-    const [noticias, setNoticias]           = useState<News[]>([]);
-    const [areaPoints, setAreaPoints]       = useState<PointOfInterest[]>([]);
-    const [loadingData, setLoadingData]     = useState(false);
-    const [showModal, setShowModal]         = useState(false);
-    const [editingItem, setEditingItem]     = useState<any>(null);
-    const [saving, setSaving]               = useState(false);
+    const [selectedArea, setSelectedArea] = useState<Area | null>(null);
+    const [tab, setTab] = useState<'eventos' | 'noticias'>('eventos');
+    const [eventos, setEventos] = useState<Event[]>([]);
+    const [noticias, setNoticias] = useState<News[]>([]);
+    const [areaPoints, setAreaPoints] = useState<PointOfInterest[]>([]);
+    const [loadingData, setLoadingData] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [editingItem, setEditingItem] = useState<any>(null);
+    const [saving, setSaving] = useState(false);
     const [showHistorial, setShowHistorial] = useState(false);
 
     const [eventForm, setEventForm] = useState<CreateEventDto>({

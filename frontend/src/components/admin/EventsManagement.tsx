@@ -3,7 +3,56 @@ import { eventsService, Event, CreateEventDto } from '@/services/eventsService';
 import { areasService, Area } from '@/services/areasService';
 import { pointsService, PointOfInterest } from '@/services/pointsService';
 
-// ─── Modal Crear/Editar (sin cambios) ──────────────────────────────────
+// ── Hook: cerrar modal con Escape ─────────────────────────────────────────────
+function useEscapeKey(handler: () => void) {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handler(); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [handler]);
+}
+
+// ── Modal accesible reutilizable ──────────────────────────────────────────────
+// Backdrop = <button> interactivo (sin warning jsx-a11y)
+// Diálogo  = <div role="dialog"> sin onKeyDown (Escape via useEscapeKey)
+const ModalWrapper: React.FC<{
+    onClose: () => void;
+    children: React.ReactNode;
+    wide?: boolean;
+}> = ({ onClose, children, wide }) => {
+    useEscapeKey(onClose);
+    return (
+        <div className="modal-overlay">
+            <button
+                type="button"
+                aria-label="Cerrar modal"
+                onClick={onClose}
+                style={{
+                    position: 'fixed', inset: 0,
+                    background: 'transparent', border: 'none',
+                    cursor: 'default', width: '100%', height: '100%',
+                }}
+            />
+            <div
+                role="dialog"
+                aria-modal="true"
+                className="modal-content"
+                tabIndex={-1}
+                style={{
+                    position: 'relative', zIndex: 1,
+                    ...(wide ? {
+                        maxWidth: 780, width: '95%', maxHeight: '88vh',
+                        display: 'flex', flexDirection: 'column',
+                    } : {}),
+                }}
+            >
+                {children}
+            </div>
+        </div>
+    );
+};
+
+// ─── Modal Crear/Editar ────────────────────────────────────────────────
 const EventModal: React.FC<{
     event: Event | null;
     areas: Area[];
@@ -55,129 +104,137 @@ const EventModal: React.FC<{
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>{event ? 'Editar Evento' : 'Nuevo Evento'}</h2>
-                    <button className="modal-close" onClick={onClose}>×</button>
-                </div>
-                <form onSubmit={handleSubmit}>
-                    <div className="form-group">
-                        <label>Título *</label>
-                        <input
-                            type="text"
-                            value={formData.title}
-                            onChange={e => setFormData({ ...formData, title: e.target.value })}
-                            required
-                            placeholder="Nombre del evento"
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label>Descripción</label>
-                        <textarea
-                            value={formData.description}
-                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                            rows={3}
-                            placeholder="Descripción del evento..."
-                        />
-                    </div>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Fecha *</label>
-                            <input
-                                type="date"
-                                value={formData.eventDate}
-                                onChange={e => setFormData({ ...formData, eventDate: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Área</label>
-                            <select
-                                value={formData.areaId}
-                                onChange={e => setFormData({ ...formData, areaId: e.target.value, pointOfInterestId: '' })}
-                            >
-                                <option value="">Sin área</option>
-                                {areas.map(a => (
-                                    <option key={a.id} value={a.id}>{a.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Punto de Interés</label>
-                            <select
-                                value={formData.pointOfInterestId}
-                                onChange={e => setFormData({ ...formData, pointOfInterestId: e.target.value, areaId: '' })}
-                            >
-                                <option value="">Sin punto de interés</option>
-                                {points.map(p => (
-                                    <option key={p.id} value={p.id}>{p.title}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label>Hora inicio</label>
-                            <input
-                                type="time"
-                                value={formData.startTime}
-                                onChange={e => setFormData({ ...formData, startTime: e.target.value })}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Hora fin</label>
-                            <input
-                                type="time"
-                                value={formData.endTime}
-                                onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                            />
-                        </div>
-                    </div>
-                    <div className="form-row">
-                        <div className="form-group">
-                            <label>Ubicación</label>
-                            <input
-                                type="text"
-                                value={formData.location}
-                                onChange={e => setFormData({ ...formData, location: e.target.value })}
-                                placeholder="Ej: Auditorio Principal"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Categoría</label>
-                            <select
-                                value={formData.category}
-                                onChange={e => setFormData({ ...formData, category: e.target.value })}
-                            >
-                                <option value="">Sin categoría</option>
-                                <option value="ACADEMICO">Académico</option>
-                                <option value="CULTURAL">Cultural</option>
-                                <option value="DEPORTIVO">Deportivo</option>
-                                <option value="INSTITUCIONAL">Institucional</option>
-                                <option value="OTRO">Otro</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div className="form-group">
-                        <label className="checkbox-label">
-                            <input
-                                type="checkbox"
-                                checked={formData.isPublished}
-                                onChange={e => setFormData({ ...formData, isPublished: e.target.checked })}
-                            />
-                            Publicar evento
-                        </label>
-                    </div>
-                    <div className="modal-actions">
-                        <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-                        <button type="submit" className="btn btn-primary" disabled={saving}>
-                            {saving ? 'Guardando...' : event ? 'Actualizar' : 'Crear'}
-                        </button>
-                    </div>
-                </form>
+        <ModalWrapper onClose={onClose}>
+            <div className="modal-header">
+                <h2>{event ? 'Editar Evento' : 'Nuevo Evento'}</h2>
+                <button type="button" className="modal-close" onClick={onClose}>×</button>
             </div>
-        </div>
+            <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                    <label htmlFor="ev-title">Título *</label>
+                    <input
+                        id="ev-title"
+                        type="text"
+                        value={formData.title}
+                        onChange={e => setFormData({ ...formData, title: e.target.value })}
+                        required
+                        placeholder="Nombre del evento"
+                    />
+                </div>
+                <div className="form-group">
+                    <label htmlFor="ev-desc">Descripción</label>
+                    <textarea
+                        id="ev-desc"
+                        value={formData.description}
+                        onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        rows={3}
+                        placeholder="Descripción del evento..."
+                    />
+                </div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="ev-date">Fecha *</label>
+                        <input
+                            id="ev-date"
+                            type="date"
+                            value={formData.eventDate}
+                            onChange={e => setFormData({ ...formData, eventDate: e.target.value })}
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="ev-area">Área</label>
+                        <select
+                            id="ev-area"
+                            value={formData.areaId}
+                            onChange={e => setFormData({ ...formData, areaId: e.target.value, pointOfInterestId: '' })}
+                        >
+                            <option value="">Sin área</option>
+                            {areas.map(a => (
+                                <option key={a.id} value={a.id}>{a.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="ev-poi">Punto de Interés</label>
+                        <select
+                            id="ev-poi"
+                            value={formData.pointOfInterestId}
+                            onChange={e => setFormData({ ...formData, pointOfInterestId: e.target.value, areaId: '' })}
+                        >
+                            <option value="">Sin punto de interés</option>
+                            {points.map(p => (
+                                <option key={p.id} value={p.id}>{p.title}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="ev-start">Hora inicio</label>
+                        <input
+                            id="ev-start"
+                            type="time"
+                            value={formData.startTime}
+                            onChange={e => setFormData({ ...formData, startTime: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="ev-end">Hora fin</label>
+                        <input
+                            id="ev-end"
+                            type="time"
+                            value={formData.endTime}
+                            onChange={e => setFormData({ ...formData, endTime: e.target.value })}
+                        />
+                    </div>
+                </div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="ev-loc">Ubicación</label>
+                        <input
+                            id="ev-loc"
+                            type="text"
+                            value={formData.location}
+                            onChange={e => setFormData({ ...formData, location: e.target.value })}
+                            placeholder="Ej: Auditorio Principal"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="ev-cat">Categoría</label>
+                        <select
+                            id="ev-cat"
+                            value={formData.category}
+                            onChange={e => setFormData({ ...formData, category: e.target.value })}
+                        >
+                            <option value="">Sin categoría</option>
+                            <option value="ACADEMICO">Académico</option>
+                            <option value="CULTURAL">Cultural</option>
+                            <option value="DEPORTIVO">Deportivo</option>
+                            <option value="INSTITUCIONAL">Institucional</option>
+                            <option value="OTRO">Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="form-group">
+                    <label htmlFor="ev-pub" className="checkbox-label">
+                        <input
+                            id="ev-pub"
+                            type="checkbox"
+                            checked={formData.isPublished}
+                            onChange={e => setFormData({ ...formData, isPublished: e.target.checked })}
+                        />{' '}
+                        Publicar evento
+                    </label>
+                </div>
+                <div className="modal-actions">
+                    <button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
+                    <button type="submit" className="btn btn-primary" disabled={saving}>
+                        {saving ? 'Guardando...' : event ? 'Actualizar' : 'Crear'}
+                    </button>
+                </div>
+            </form>
+        </ModalWrapper>
     );
 };
 
@@ -245,300 +302,283 @@ const HistorialModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }, {});
 
     const hasFilters = !!(search || catFilter || dateFrom || dateTo);
+    const clearFilters = () => { setSearch(''); setCatFilter(''); setDateFrom(''); setDateTo(''); };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div
-                className="modal-content"
-                onClick={e => e.stopPropagation()}
-                style={{
-                    maxWidth: 780, width: '95%', maxHeight: '88vh',
-                    display: 'flex', flexDirection: 'column',
-                }}
-            >
-                {/* Header */}
-                <div className="modal-header" style={{ flexShrink: 0 }}>
-                    <div>
-                        <h2 style={{ margin: 0 }}>🕐 Historial de Eventos</h2>
-                        <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#888' }}>
-                            {pastEvents.length} eventos pasados registrados
-                        </p>
-                    </div>
-                    <button className="modal-close" onClick={onClose}>×</button>
+        <ModalWrapper onClose={onClose} wide>
+            {/* Header */}
+            <div className="modal-header" style={{ flexShrink: 0 }}>
+                <div>
+                    <h2 style={{ margin: 0 }}>🕐 Historial de Eventos</h2>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#888' }}>
+                        {pastEvents.length} eventos pasados registrados
+                    </p>
                 </div>
+                <button type="button" className="modal-close" onClick={onClose}>×</button>
+            </div>
 
-                {/* Filtros */}
-                <div style={{
-                    padding: '12px 24px', borderBottom: '1px solid #e0e0e0',
-                    flexShrink: 0, display: 'flex', flexWrap: 'wrap', gap: 8,
-                }}>
-                    <input
-                        type="text"
-                        placeholder="🔍 Buscar evento..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
+            {/* Filtros */}
+            <div style={{
+                padding: '12px 24px', borderBottom: '1px solid #e0e0e0',
+                flexShrink: 0, display: 'flex', flexWrap: 'wrap', gap: 8,
+            }}>
+                <input
+                    type="text"
+                    placeholder="🔍 Buscar evento..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    style={{
+                        flex: '1 1 180px', padding: '7px 12px',
+                        background: '#fff', border: '1px solid #e0e0e0',
+                        borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                    }}
+                />
+                <select
+                    value={catFilter}
+                    onChange={e => setCatFilter(e.target.value)}
+                    style={{
+                        flex: '0 1 155px', padding: '7px 10px',
+                        background: '#fff', border: '1px solid #e0e0e0',
+                        borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                    }}
+                >
+                    <option value="">Todas las categorías</option>
+                    <option value="ACADEMICO">Académico</option>
+                    <option value="CULTURAL">Cultural</option>
+                    <option value="DEPORTIVO">Deportivo</option>
+                    <option value="INSTITUCIONAL">Institucional</option>
+                    <option value="OTRO">Otro</option>
+                </select>
+                <input
+                    type="date" value={dateFrom} title="Desde"
+                    onChange={e => setDateFrom(e.target.value)}
+                    style={{
+                        flex: '0 1 140px', padding: '7px 10px',
+                        background: '#fff', border: '1px solid #e0e0e0',
+                        borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                    }}
+                />
+                <input
+                    type="date" value={dateTo} title="Hasta"
+                    onChange={e => setDateTo(e.target.value)}
+                    style={{
+                        flex: '0 1 140px', padding: '7px 10px',
+                        background: '#fff', border: '1px solid #e0e0e0',
+                        borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                    }}
+                />
+                {hasFilters && (
+                    <button
+                        type="button"
+                        onClick={clearFilters}
                         style={{
-                            flex: '1 1 180px', padding: '7px 12px',
-                            background: '#fff', border: '1px solid #e0e0e0',
-                            borderRadius: 6, color: '#333', fontSize: '0.85rem',
-                        }}
-                    />
-                    <select
-                        value={catFilter}
-                        onChange={e => setCatFilter(e.target.value)}
-                        style={{
-                            flex: '0 1 155px', padding: '7px 10px',
-                            background: '#fff', border: '1px solid #e0e0e0',
-                            borderRadius: 6, color: '#333', fontSize: '0.85rem',
+                            padding: '7px 12px', background: 'transparent',
+                            border: '1px solid #e0e0e0', borderRadius: 6,
+                            color: '#888', cursor: 'pointer', fontSize: '0.8rem',
                         }}
                     >
-                        <option value="">Todas las categorías</option>
-                        <option value="ACADEMICO">Académico</option>
-                        <option value="CULTURAL">Cultural</option>
-                        <option value="DEPORTIVO">Deportivo</option>
-                        <option value="INSTITUCIONAL">Institucional</option>
-                        <option value="OTRO">Otro</option>
-                    </select>
-                    <input
-                        type="date" value={dateFrom} title="Desde"
-                        onChange={e => setDateFrom(e.target.value)}
-                        style={{
-                            flex: '0 1 140px', padding: '7px 10px',
-                            background: '#fff', border: '1px solid #e0e0e0',
-                            borderRadius: 6, color: '#333', fontSize: '0.85rem',
-                        }}
-                    />
-                    <input
-                        type="date" value={dateTo} title="Hasta"
-                        onChange={e => setDateTo(e.target.value)}
-                        style={{
-                            flex: '0 1 140px', padding: '7px 10px',
-                            background: '#fff', border: '1px solid #e0e0e0',
-                            borderRadius: 6, color: '#333', fontSize: '0.85rem',
-                        }}
-                    />
-                    {hasFilters && (
-                        <button
-                            onClick={() => { setSearch(''); setCatFilter(''); setDateFrom(''); setDateTo(''); }}
-                            style={{
-                                padding: '7px 12px', background: 'transparent',
-                                border: '1px solid #e0e0e0', borderRadius: 6,
-                                color: '#888', cursor: 'pointer', fontSize: '0.8rem',
-                            }}
-                        >
-                            ✕ Limpiar
-                        </button>
-                    )}
-                </div>
+                        ✕ Limpiar
+                    </button>
+                )}
+            </div>
 
-                {/* Cuerpo scrolleable */}
-                <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px' }}>
-                    {loading ? (
-                        <div style={{ textAlign: 'center', padding: '48px 0', color: '#888' }}>
-                            Cargando historial...
-                        </div>
-                    ) : filtered.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '48px 0' }}>
-                            <div style={{ fontSize: '2.5rem' }}>🗓️</div>
-                            <p style={{ color: '#888', marginTop: 8 }}>
-                                {hasFilters
-                                    ? 'Sin resultados para los filtros aplicados'
-                                    : 'No hay eventos pasados registrados aún'}
-                            </p>
-                            {hasFilters && (
-                                <button
-                                    onClick={() => { setSearch(''); setCatFilter(''); setDateFrom(''); setDateTo(''); }}
-                                    style={{
-                                        marginTop: 8, background: 'none', border: 'none',
-                                        color: '#2e7d32', cursor: 'pointer', fontSize: '0.85rem',
-                                    }}
-                                >
-                                    Limpiar filtros
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        Object.entries(grouped).map(([month, evs]) => (
-                            <div key={month} style={{ marginBottom: 24 }}>
-                                {/* Separador de mes */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                                    <span style={{
-                                        fontSize: '0.72rem', fontWeight: 700, color: '#888',
-                                        textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap',
-                                    }}>
-                                        {month}
-                                    </span>
-                                    <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
-                                    <span style={{
-                                        fontSize: '0.72rem', color: '#888',
-                                        background: '#f5f5f5', border: '1px solid #e0e0e0',
-                                        borderRadius: 10, padding: '1px 8px',
-                                    }}>
-                                        {evs.length}
-                                    </span>
-                                </div>
+            {/* Cuerpo scrolleable */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px' }}>
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '48px 0', color: '#888' }}>
+                        Cargando historial...
+                    </div>
+                ) : filtered.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                        <div style={{ fontSize: '2.5rem' }}>🗓️</div>
+                        <p style={{ color: '#888', marginTop: 8 }}>
+                            {hasFilters
+                                ? 'Sin resultados para los filtros aplicados'
+                                : 'No hay eventos pasados registrados aún'}
+                        </p>
+                        {hasFilters && (
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                style={{
+                                    marginTop: 8, background: 'none', border: 'none',
+                                    color: '#2e7d32', cursor: 'pointer', fontSize: '0.85rem',
+                                }}
+                            >
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    Object.entries(grouped).map(([month, evs]) => (
+                        <div key={month} style={{ marginBottom: 24 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                                <span style={{
+                                    fontSize: '0.72rem', fontWeight: 700, color: '#888',
+                                    textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap',
+                                }}>
+                                    {month}
+                                </span>
+                                <div style={{ flex: 1, height: 1, background: '#e0e0e0' }} />
+                                <span style={{
+                                    fontSize: '0.72rem', color: '#888',
+                                    background: '#f5f5f5', border: '1px solid #e0e0e0',
+                                    borderRadius: 10, padding: '1px 8px',
+                                }}>
+                                    {evs.length}
+                                </span>
+                            </div>
 
-                                {/* Cards del mes */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    {evs.map(ev => {
-                                        const isOpen = expandedId === ev.id;
-                                        const color  = CATEGORY_COLORS[ev.category || ''] || '#57606a';
-                                        const evDate = new Date(ev.eventDate);
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {evs.map(ev => {
+                                    const isOpen = expandedId === ev.id;
+                                    const color  = CATEGORY_COLORS[ev.category || ''] || '#57606a';
+                                    const evDate = new Date(ev.eventDate);
 
-                                        return (
-                                            <div
-                                                key={ev.id}
+                                    return (
+                                        <div
+                                            key={ev.id}
+                                            style={{
+                                                border: '1px solid #e0e0e0', borderRadius: 8,
+                                                background: isOpen ? '#f9fbe7' : '#fff',
+                                                overflow: 'hidden', transition: 'background 0.15s',
+                                            }}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => setExpandedId(isOpen ? null : ev.id)}
                                                 style={{
-                                                    border: '1px solid #e0e0e0', borderRadius: 8,
-                                                    background: isOpen ? '#f9fbe7' : '#fff',
-                                                    overflow: 'hidden', transition: 'background 0.15s',
+                                                    width: '100%', textAlign: 'left',
+                                                    background: 'none', border: 'none',
+                                                    cursor: 'pointer', padding: '10px 14px',
+                                                    display: 'flex', alignItems: 'center', gap: 14,
                                                 }}
                                             >
-                                                <button
-                                                    onClick={() => setExpandedId(isOpen ? null : ev.id)}
-                                                    style={{
-                                                        width: '100%', textAlign: 'left',
-                                                        background: 'none', border: 'none',
-                                                        cursor: 'pointer', padding: '10px 14px',
-                                                        display: 'flex', alignItems: 'center', gap: 14,
-                                                    }}
-                                                >
-                                                    {/* Día */}
-                                                    <div style={{
-                                                        flexShrink: 0, width: 44, textAlign: 'center',
-                                                        borderRight: `2px solid ${color}`, paddingRight: 12,
-                                                    }}>
-                                                        <div style={{ fontSize: '0.65rem', color: '#888', textTransform: 'uppercase' }}>
-                                                            {evDate.toLocaleDateString('es-CO', { month: 'short' })}
-                                                        </div>
-                                                        <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#333', lineHeight: 1.1 }}>
-                                                            {evDate.getDate()}
-                                                        </div>
+                                                <div style={{
+                                                    flexShrink: 0, width: 44, textAlign: 'center',
+                                                    borderRight: `2px solid ${color}`, paddingRight: 12,
+                                                }}>
+                                                    <div style={{ fontSize: '0.65rem', color: '#888', textTransform: 'uppercase' }}>
+                                                        {evDate.toLocaleDateString('es-CO', { month: 'short' })}
                                                     </div>
+                                                    <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#333', lineHeight: 1.1 }}>
+                                                        {evDate.getDate()}
+                                                    </div>
+                                                </div>
 
-                                                    {/* Info */}
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                        <span style={{
+                                                            fontWeight: 600, color: '#333', fontSize: '0.9rem',
+                                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                        }}>
+                                                            {ev.title}
+                                                        </span>
+                                                        {ev.category && (
                                                             <span style={{
-                                                                fontWeight: 600, color: '#333', fontSize: '0.9rem',
-                                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                                fontSize: '0.7rem', padding: '1px 8px', borderRadius: 10,
+                                                                flexShrink: 0, background: color + '22', color,
+                                                                border: `1px solid ${color}44`, fontWeight: 600,
                                                             }}>
-                                                                {ev.title}
+                                                                {ev.category}
                                                             </span>
-                                                            {ev.category && (
-                                                                <span style={{
-                                                                    fontSize: '0.7rem', padding: '1px 8px', borderRadius: 10,
-                                                                    flexShrink: 0, background: color + '22', color,
-                                                                    border: `1px solid ${color}44`, fontWeight: 600,
-                                                                }}>
-                                                                    {ev.category}
-                                                                </span>
-                                                            )}
-                                                            {!ev.isPublished && (
-                                                                <span style={{
-                                                                    fontSize: '0.7rem', padding: '1px 8px', borderRadius: 10,
-                                                                    flexShrink: 0, background: '#f5f5f5', color: '#888',
-                                                                    border: '1px solid #e0e0e0',
-                                                                }}>
-                                                                    Borrador
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div style={{
-                                                            display: 'flex', gap: 12, marginTop: 3,
-                                                            fontSize: '0.75rem', color: '#888', flexWrap: 'wrap',
-                                                        }}>
-                                                            {ev.location && <span>📍 {ev.location}</span>}
-                                                            {ev.area?.name && <span>🏢 {ev.area.name}</span>}
-                                                            {ev.startTime && (
-                                                                <span>⏰ {ev.startTime}{ev.endTime ? ` – ${ev.endTime}` : ''}</span>
-                                                            )}
-                                                            <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>
-                                                                {timeAgo(ev.eventDate)}
+                                                        )}
+                                                        {!ev.isPublished && (
+                                                            <span style={{
+                                                                fontSize: '0.7rem', padding: '1px 8px', borderRadius: 10,
+                                                                flexShrink: 0, background: '#f5f5f5', color: '#888',
+                                                                border: '1px solid #e0e0e0',
+                                                            }}>
+                                                                Borrador
                                                             </span>
-                                                        </div>
+                                                        )}
                                                     </div>
-
-                                                    {/* Chevron */}
-                                                    <span style={{
-                                                        color: '#888', flexShrink: 0, fontSize: '0.8rem',
-                                                        display: 'inline-block',
-                                                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                        transition: 'transform 0.2s',
-                                                    }}>
-                                                        ▾
-                                                    </span>
-                                                </button>
-
-                                                {/* Detalle expandido */}
-                                                {isOpen && (
                                                     <div style={{
-                                                        padding: '12px 16px 14px 72px',
-                                                        borderTop: '1px solid #e0e0e0',
-                                                        background: '#f9fbe7',
+                                                        display: 'flex', gap: 12, marginTop: 3,
+                                                        fontSize: '0.75rem', color: '#888', flexWrap: 'wrap',
                                                     }}>
-                                                        <div style={{
-                                                            display: 'grid',
-                                                            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                                                            gap: '10px 20px', fontSize: '0.82rem',
-                                                        }}>
+                                                        {ev.location && <span>📍 {ev.location}</span>}
+                                                        {ev.area?.name && <span>🏢 {ev.area.name}</span>}
+                                                        {ev.startTime && (
+                                                            <span>⏰ {ev.startTime}{ev.endTime ? ` – ${ev.endTime}` : ''}</span>
+                                                        )}
+                                                        <span style={{ marginLeft: 'auto', fontStyle: 'italic' }}>
+                                                            {timeAgo(ev.eventDate)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <span style={{
+                                                    color: '#888', flexShrink: 0, fontSize: '0.8rem',
+                                                    display: 'inline-block',
+                                                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                    transition: 'transform 0.2s',
+                                                }}>▾</span>
+                                            </button>
+
+                                            {isOpen && (
+                                                <div style={{
+                                                    padding: '12px 16px 14px 72px',
+                                                    borderTop: '1px solid #e0e0e0',
+                                                    background: '#f9fbe7',
+                                                }}>
+                                                    <div style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                                                        gap: '10px 20px', fontSize: '0.82rem',
+                                                    }}>
+                                                        <div>
+                                                            <p style={{ color: '#888', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                                                Fecha completa
+                                                            </p>
+                                                            <p style={{ color: '#333', margin: 0 }}>
+                                                                {evDate.toLocaleDateString('es-CO', {
+                                                                    weekday: 'long', year: 'numeric',
+                                                                    month: 'long', day: 'numeric',
+                                                                })}
+                                                            </p>
+                                                        </div>
+                                                        {ev.pointOfInterest && (
                                                             <div>
                                                                 <p style={{ color: '#888', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                                                                    Fecha completa
+                                                                    Punto de Interés
                                                                 </p>
-                                                                <p style={{ color: '#333', margin: 0 }}>
-                                                                    {evDate.toLocaleDateString('es-CO', {
-                                                                        weekday: 'long', year: 'numeric',
-                                                                        month: 'long', day: 'numeric',
-                                                                    })}
-                                                                </p>
+                                                                <p style={{ color: '#333', margin: 0 }}>{ev.pointOfInterest.title}</p>
                                                             </div>
-                                                            {ev.pointOfInterest && (
-                                                                <div>
-                                                                    <p style={{ color: '#888', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                                                                        Punto de Interés
-                                                                    </p>
-                                                                    <p style={{ color: '#333', margin: 0 }}>
-                                                                        {ev.pointOfInterest.title}
-                                                                    </p>
-                                                                </div>
-                                                            )}
-                                                            {ev.description && (
-                                                                <div style={{ gridColumn: '1 / -1' }}>
-                                                                    <p style={{ color: '#888', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
-                                                                        Descripción
-                                                                    </p>
-                                                                    <p style={{ color: '#555', margin: 0, lineHeight: 1.5 }}>
-                                                                        {ev.description}
-                                                                    </p>
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                        )}
+                                                        {ev.description && (
+                                                            <div style={{ gridColumn: '1 / -1' }}>
+                                                                <p style={{ color: '#888', margin: '0 0 2px', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                                                    Descripción
+                                                                </p>
+                                                                <p style={{ color: '#555', margin: 0, lineHeight: 1.5 }}>{ev.description}</p>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
-                        ))
-                    )}
-                </div>
-
-                {/* Footer */}
-                <div style={{
-                    padding: '12px 24px', borderTop: '1px solid #e0e0e0',
-                    flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                }}>
-                    <span style={{ fontSize: '0.8rem', color: '#888' }}>
-                        {filtered.length !== pastEvents.length
-                            ? `${filtered.length} de ${pastEvents.length} eventos`
-                            : `${pastEvents.length} eventos en total`}
-                    </span>
-                    <button className="btn btn-secondary" onClick={onClose}>Cerrar</button>
-                </div>
+                        </div>
+                    ))
+                )}
             </div>
-        </div>
+
+            {/* Footer */}
+            <div style={{
+                padding: '12px 24px', borderTop: '1px solid #e0e0e0',
+                flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+                <span style={{ fontSize: '0.8rem', color: '#888' }}>
+                    {filtered.length !== pastEvents.length
+                        ? `${filtered.length} de ${pastEvents.length} eventos`
+                        : `${pastEvents.length} eventos en total`}
+                </span>
+                <button type="button" className="btn btn-secondary" onClick={onClose}>Cerrar</button>
+            </div>
+        </ModalWrapper>
     );
 };
 
@@ -609,6 +649,7 @@ const EventsManagement: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button
+                        type="button"
                         className="btn btn-secondary"
                         onClick={() => setShowHistorial(true)}
                         style={{ display: 'flex', alignItems: 'center', gap: 6 }}
@@ -616,6 +657,7 @@ const EventsManagement: React.FC = () => {
                         🕐 Historial
                     </button>
                     <button
+                        type="button"
                         className="btn btn-primary"
                         onClick={() => { setEditingEvent(null); setShowModal(true); }}
                     >
@@ -637,24 +679,16 @@ const EventsManagement: React.FC = () => {
                 <table className="data-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Título</th>
-                            <th>Fecha</th>
-                            <th>Ubicación</th>
-                            <th>Área</th>
-                            <th>Pto. Interés</th>
-                            <th>Categoría</th>
-                            <th>Estado</th>
-                            <th>Acciones</th>
+                            <th>ID</th><th>Título</th><th>Fecha</th><th>Ubicación</th>
+                            <th>Área</th><th>Pto. Interés</th><th>Categoría</th>
+                            <th>Estado</th><th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filtered.length === 0 ? (
                             <tr>
                                 <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: '#888' }}>
-                                    {search
-                                        ? 'No se encontraron eventos con ese criterio'
-                                        : 'No hay eventos registrados'}
+                                    {search ? 'No se encontraron eventos con ese criterio' : 'No hay eventos registrados'}
                                 </td>
                             </tr>
                         ) : filtered.map(ev => (
@@ -678,11 +712,13 @@ const EventsManagement: React.FC = () => {
                                 <td>
                                     <div className="action-buttons">
                                         <button
+                                            type="button"
                                             className="btn btn-sm btn-secondary"
                                             onClick={() => { setEditingEvent(ev); setShowModal(true); }}
                                             title="Editar"
                                         >✏️</button>
                                         <button
+                                            type="button"
                                             className="btn btn-sm btn-danger"
                                             onClick={() => handleDelete(ev.id)}
                                             title="Eliminar"
