@@ -2,51 +2,65 @@ import React, { useEffect, useState } from 'react';
 import { areasService, Area, CreateAreaDto } from '@/services/areasService';
 import { usersService, User } from '@/services/usersService';
 
+// ── Hook: cerrar modal con Escape ─────────────────────────────────────────────
+// useEffect en lugar de onKeyDown en el div — evita el warning
+// "non-interactive elements should not have keyboard listeners"
+function useEscapeKey(handler: () => void) {
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') handler(); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [handler]);
+}
+
 // ── Componente reutilizable de Modal accesible ────────────────────────────────
-// Backdrop = <button> (elemento interactivo, sin warnings)
-// Diálogo  = <div role="dialog"> con onKeyDown para Escape
 const Modal: React.FC<{
     id: string;
     title: string;
     onClose: () => void;
     children: React.ReactNode;
     footer: React.ReactNode;
-}> = ({ id, title, onClose, children, footer }) => (
-    <div className="modal-overlay">
-        {/* Backdrop como <button> — elemento interactivo → sin warning jsx-a11y */}
-        <button
-            type="button"
-            className="modal-backdrop-btn"
-            onClick={onClose}
-            aria-label="Cerrar modal"
-            style={{
-                position: 'fixed', inset: 0,
-                background: 'transparent', border: 'none',
-                cursor: 'default', width: '100%', height: '100%',
-            }}
-        />
-        {/* Diálogo por encima del backdrop */}
-        <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${id}-title`}
-            className="modal-content"
-            onKeyDown={e => {
-                if (e.key === 'Escape') onClose();
-                e.stopPropagation();
-            }}
-            tabIndex={-1}
-            style={{ position: 'relative', zIndex: 1 }}
-        >
-            <div className="modal-header">
-                <h2 id={`${id}-title`}>{title}</h2>
-                <button className="modal-close" onClick={onClose} aria-label="Cerrar">✕</button>
+}> = ({ id, title, onClose, children, footer }) => {
+    // ✅ Fix 3: Escape via useEffect — sin onKeyDown en el div
+    useEscapeKey(onClose);
+
+    return (
+        <div className="modal-overlay">
+            {/* Backdrop interactivo */}
+            <button
+                type="button"
+                onClick={onClose}
+                aria-label="Cerrar modal"
+                style={{
+                    position: 'fixed', inset: 0,
+                    background: 'transparent', border: 'none',
+                    cursor: 'default', width: '100%', height: '100%',
+                }}
+            />
+            {/* ✅ Sin onKeyDown — el role="dialog" solo declara semántica */}
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`${id}-title`}
+                className="modal-content"
+                tabIndex={-1}
+                style={{ position: 'relative', zIndex: 1 }}
+            >
+                <div className="modal-header">
+                    <h2 id={`${id}-title`}>{title}</h2>
+                    <button
+                        type="button"
+                        className="modal-close"
+                        onClick={onClose}
+                        aria-label="Cerrar"
+                    >✕</button>
+                </div>
+                <div className="modal-body">{children}</div>
+                <div className="modal-footer">{footer}</div>
             </div>
-            <div className="modal-body">{children}</div>
-            <div className="modal-footer">{footer}</div>
         </div>
-    </div>
-);
+    );
+};
 
 // ── Componente principal ──────────────────────────────────────────────────────
 const AreasManagement: React.FC = () => {
@@ -158,7 +172,7 @@ const AreasManagement: React.FC = () => {
             setSaving(true);
             for (const sub of subadmins) {
                 const currentAreas = await usersService.getAssignedAreas(sub.id);
-                const currentIds = currentAreas.map((a: any) => a.id || a.areaId);
+                const currentIds: number[] = currentAreas.map((a: any) => a.id || a.areaId);
                 let newIds: number[];
 
                 if (assignedUsers.includes(sub.id)) {
@@ -169,7 +183,9 @@ const AreasManagement: React.FC = () => {
                     newIds = currentIds.filter((id: number) => id !== selectedArea.id);
                 }
 
-                if (JSON.stringify(newIds.sort()) !== JSON.stringify(currentIds.sort())) {
+                // ✅ Fix 1 y 2: compare function numérica — evita ordenamiento alfabético
+                const sortNum = (a: number, b: number) => a - b;
+                if (JSON.stringify([...newIds].sort(sortNum)) !== JSON.stringify([...currentIds].sort(sortNum))) {
                     await usersService.assignAreas(sub.id, newIds);
                 }
             }
@@ -201,7 +217,7 @@ const AreasManagement: React.FC = () => {
                         {areas.length} áreas registradas del campus
                     </p>
                 </div>
-                <button className="btn btn-primary" onClick={openCreate}>
+                <button type="button" className="btn btn-primary" onClick={openCreate}>
                     + Nueva Área
                 </button>
             </div>
@@ -249,11 +265,13 @@ const AreasManagement: React.FC = () => {
                                 <td>
                                     <div className="action-buttons">
                                         <button
+                                            type="button"
                                             className="btn btn-sm btn-secondary"
                                             onClick={() => openEdit(area)}
                                             title="Editar"
                                         >✏️</button>
                                         <button
+                                            type="button"
                                             className="btn btn-sm"
                                             onClick={() => openAssign(area)}
                                             title="Asignar subadministradores"
@@ -263,6 +281,7 @@ const AreasManagement: React.FC = () => {
                                             }}
                                         >👤 Asignar</button>
                                         <button
+                                            type="button"
                                             className="btn btn-sm btn-danger"
                                             onClick={() => handleDelete(area.id)}
                                             title="Eliminar"
@@ -282,7 +301,7 @@ const AreasManagement: React.FC = () => {
                 </table>
             </div>
 
-            {/* ── Modal Crear/Editar área ────────────────────────── */}
+            {/* Modal Crear/Editar área */}
             {showModal && (
                 <Modal
                     id="modal-area"
@@ -290,10 +309,10 @@ const AreasManagement: React.FC = () => {
                     onClose={() => setShowModal(false)}
                     footer={
                         <>
-                            <button className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
                                 Cancelar
                             </button>
-                            <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
                                 {saving ? 'Guardando...' : editingArea ? 'Actualizar' : 'Crear Área'}
                             </button>
                         </>
@@ -309,7 +328,6 @@ const AreasManagement: React.FC = () => {
                             placeholder="Ej: Zonas Deportivas"
                         />
                     </div>
-
                     <div className="form-group">
                         <label htmlFor="area-code">Código único *</label>
                         <input
@@ -324,7 +342,6 @@ const AreasManagement: React.FC = () => {
                             <small style={{ color: '#999' }}>El código no se puede modificar</small>
                         )}
                     </div>
-
                     <div className="form-group">
                         <label htmlFor="area-desc">Descripción</label>
                         <textarea
@@ -336,7 +353,6 @@ const AreasManagement: React.FC = () => {
                             rows={3}
                         />
                     </div>
-
                     <div className="form-group">
                         <label htmlFor="area-active" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <input
@@ -351,7 +367,7 @@ const AreasManagement: React.FC = () => {
                 </Modal>
             )}
 
-            {/* ── Modal Asignar subadmins ────────────────────────── */}
+            {/* Modal Asignar subadmins */}
             {showAssign && selectedArea && (
                 <Modal
                     id="modal-assign"
@@ -359,10 +375,11 @@ const AreasManagement: React.FC = () => {
                     onClose={() => setShowAssign(false)}
                     footer={
                         <>
-                            <button className="btn btn-secondary" onClick={() => setShowAssign(false)}>
+                            <button type="button" className="btn btn-secondary" onClick={() => setShowAssign(false)}>
                                 Cancelar
                             </button>
                             <button
+                                type="button"
                                 className="btn btn-primary"
                                 onClick={handleSaveAssign}
                                 disabled={saving || subadmins.length === 0}
