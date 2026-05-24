@@ -53,7 +53,6 @@ const AreasManagement: React.FC = () => {
 
     const openAssign = async (area: Area) => {
         setSelectedArea(area);
-        // Cargar subadmins que ya tienen esta área asignada
         try {
             const assigned: number[] = [];
             for (const sub of subadmins) {
@@ -112,19 +111,16 @@ const AreasManagement: React.FC = () => {
         if (!selectedArea) return;
         try {
             setSaving(true);
-            // Para cada subadmin, obtener sus áreas actuales y actualizar
             for (const sub of subadmins) {
                 const currentAreas = await usersService.getAssignedAreas(sub.id);
                 const currentIds = currentAreas.map((a: any) => a.id || a.areaId);
                 let newIds: number[];
 
                 if (assignedUsers.includes(sub.id)) {
-                    // Agregar esta área si no la tiene
                     newIds = currentIds.includes(selectedArea.id)
                         ? currentIds
                         : [...currentIds, selectedArea.id];
                 } else {
-                    // Quitar esta área si la tiene
                     newIds = currentIds.filter((id: number) => id !== selectedArea.id);
                 }
 
@@ -186,7 +182,7 @@ const AreasManagement: React.FC = () => {
                                 <td>
                                     <code style={{
                                         background: '#f0f4f0', color: '#2e7d32',
-                                        padding: '2px 8px', borderRadius: 4, fontSize: 12
+                                        padding: '2px 8px', borderRadius: 4, fontSize: 12,
                                     }}>
                                         {area.code}
                                     </code>
@@ -218,7 +214,7 @@ const AreasManagement: React.FC = () => {
                                             title="Asignar subadministradores"
                                             style={{
                                                 background: '#e3f2fd', color: '#1565c0',
-                                                border: '1px solid #90caf9'
+                                                border: '1px solid #90caf9',
                                             }}
                                         >👤 Asignar</button>
                                         <button
@@ -243,17 +239,32 @@ const AreasManagement: React.FC = () => {
 
             {/* ── Modal Crear/Editar área ────────────────────────── */}
             {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div
+                    className="modal-overlay"
+                    onClick={() => setShowModal(false)}
+                    onKeyDown={e => e.key === 'Escape' && setShowModal(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="modal-area-title"
+                    tabIndex={-1}
+                >
+                    <div
+                        className="modal-content"
+                        onClick={e => e.stopPropagation()}
+                        onKeyDown={e => e.stopPropagation()}
+                    >
                         <div className="modal-header">
-                            <h2>{editingArea ? 'Editar Área' : 'Nueva Área'}</h2>
+                            <h2 id="modal-area-title">
+                                {editingArea ? 'Editar Área' : 'Nueva Área'}
+                            </h2>
                             <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
                         </div>
                         <div className="modal-body">
 
                             <div className="form-group">
-                                <label>Nombre *</label>
+                                <label htmlFor="area-name">Nombre *</label>
                                 <input
+                                    id="area-name"
                                     className="form-control"
                                     value={form.name}
                                     onChange={e => setForm({ ...form, name: e.target.value })}
@@ -262,8 +273,9 @@ const AreasManagement: React.FC = () => {
                             </div>
 
                             <div className="form-group">
-                                <label>Código único *</label>
+                                <label htmlFor="area-code">Código único *</label>
                                 <input
+                                    id="area-code"
                                     className="form-control"
                                     value={form.code}
                                     onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })}
@@ -276,8 +288,9 @@ const AreasManagement: React.FC = () => {
                             </div>
 
                             <div className="form-group">
-                                <label>Descripción</label>
+                                <label htmlFor="area-desc">Descripción</label>
                                 <textarea
+                                    id="area-desc"
                                     className="form-control"
                                     value={form.description}
                                     onChange={e => setForm({ ...form, description: e.target.value })}
@@ -287,12 +300,12 @@ const AreasManagement: React.FC = () => {
                             </div>
 
                             <div className="form-group">
-                                <label>
+                                <label htmlFor="area-active" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <input
+                                        id="area-active"
                                         type="checkbox"
                                         checked={form.isActive}
                                         onChange={e => setForm({ ...form, isActive: e.target.checked })}
-                                        style={{ marginRight: 8 }}
                                     />
                                     Área activa
                                 </label>
@@ -317,10 +330,22 @@ const AreasManagement: React.FC = () => {
 
             {/* ── Modal Asignar subadmins ────────────────────────── */}
             {showAssign && selectedArea && (
-                <div className="modal-overlay" onClick={() => setShowAssign(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div
+                    className="modal-overlay"
+                    onClick={() => setShowAssign(false)}
+                    onKeyDown={e => e.key === 'Escape' && setShowAssign(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="modal-assign-title"
+                    tabIndex={-1}
+                >
+                    <div
+                        className="modal-content"
+                        onClick={e => e.stopPropagation()}
+                        onKeyDown={e => e.stopPropagation()}
+                    >
                         <div className="modal-header">
-                            <h2>Asignar Subadministradores</h2>
+                            <h2 id="modal-assign-title">Asignar Subadministradores</h2>
                             <button className="modal-close" onClick={() => setShowAssign(false)}>✕</button>
                         </div>
                         <div className="modal-body">
@@ -328,7 +353,7 @@ const AreasManagement: React.FC = () => {
                             <div style={{
                                 background: '#f0f4f0', borderRadius: 8,
                                 padding: '10px 14px', marginBottom: 16,
-                                display: 'flex', alignItems: 'center', gap: 8
+                                display: 'flex', alignItems: 'center', gap: 8,
                             }}>
                                 <span>📍</span>
                                 <div>
@@ -353,14 +378,19 @@ const AreasManagement: React.FC = () => {
                                     </p>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         {subadmins.map(sub => (
-                                            <label key={sub.id} style={{
-                                                display: 'flex', alignItems: 'center', gap: 12,
-                                                padding: '10px 14px', borderRadius: 8,
-                                                border: `1px solid ${assignedUsers.includes(sub.id) ? '#a5d6a7' : '#e0e0e0'}`,
-                                                background: assignedUsers.includes(sub.id) ? '#f1f8f1' : '#fafafa',
-                                                cursor: 'pointer', transition: 'all 0.15s'
-                                            }}>
+                                            <label
+                                                key={sub.id}
+                                                htmlFor={`sub-${sub.id}`}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: 12,
+                                                    padding: '10px 14px', borderRadius: 8,
+                                                    border: `1px solid ${assignedUsers.includes(sub.id) ? '#a5d6a7' : '#e0e0e0'}`,
+                                                    background: assignedUsers.includes(sub.id) ? '#f1f8f1' : '#fafafa',
+                                                    cursor: 'pointer', transition: 'all 0.15s',
+                                                }}
+                                            >
                                                 <input
+                                                    id={`sub-${sub.id}`}
                                                     type="checkbox"
                                                     checked={assignedUsers.includes(sub.id)}
                                                     onChange={() => toggleSubadmin(sub.id)}
@@ -378,7 +408,7 @@ const AreasManagement: React.FC = () => {
                                                     <span style={{
                                                         background: '#e8f5e9', color: '#2e7d32',
                                                         fontSize: 11, padding: '2px 8px',
-                                                        borderRadius: 10, fontWeight: 600
+                                                        borderRadius: 10, fontWeight: 600,
                                                     }}>
                                                         ✓ Asignado
                                                     </span>

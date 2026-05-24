@@ -6,7 +6,7 @@ async function run() {
     // 1. Leer config del .env
     const envPath = path.resolve(__dirname, '../.env');
     console.log('Leyendo .env de:', envPath);
-    
+
     let config = {
         host: 'localhost',
         port: 3306,
@@ -22,7 +22,7 @@ async function run() {
             if (key) {
                 const val = rest.join('=').trim();
                 if (key.trim() === 'DB_HOST') config.host = val;
-                if (key.trim() === 'DB_PORT') config.port = parseInt(val);
+                if (key.trim() === 'DB_PORT') config.port = Number.parseInt(val);
                 if (key.trim() === 'DB_USER') config.user = val;
                 if (key.trim() === 'DB_PASS') config.password = val;
                 if (key.trim() === 'DB_NAME') config.database = val;
@@ -52,10 +52,10 @@ async function run() {
         console.log('Ejecutando seeds...');
         // Asegurar que usamos la DB correcta
         await connection.query(`USE ${config.database}`);
-        
+
         // Ejecutar el script SQL
         await connection.query(seedsSql);
-        
+
         console.log('✅ Seeds ejecutados correctamente. Credenciales de admin creadas.');
         await connection.end();
 

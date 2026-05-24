@@ -130,7 +130,7 @@ const PointModal: React.FC<{
                                 type="checkbox"
                                 checked={formData.isVisible}
                                 onChange={e => setFormData({ ...formData, isVisible: e.target.checked })}
-                            />
+                            />{' '}
                             Visible en el recorrido
                         </label>
                     </div>

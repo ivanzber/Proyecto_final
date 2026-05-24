@@ -24,7 +24,7 @@ import * as entities from './entities';
         TypeOrmModule.forRoot({
             type: 'mysql',
             host: process.env.DB_HOST || 'localhost',
-            port: parseInt(process.env.DB_PORT, 10) || 3306,
+            port: Number.parseInt(process.env.DB_PORT, 10) || 3306,
             username: process.env.DB_USER || 'root',
             password: process.env.DB_PASS || '',
             database: process.env.DB_NAME || 'campus_virtual',
@@ -37,8 +37,8 @@ import * as entities from './entities';
 
         // Rate limiting
         ThrottlerModule.forRoot([{
-            ttl: parseInt(process.env.RATE_LIMIT_TTL, 10) || 60,
-            limit: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
+            ttl: Number.parseInt(process.env.RATE_LIMIT_TTL, 10) || 60,
+            limit: Number.parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
         }]),
 
         // Feature modules

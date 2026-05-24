@@ -129,7 +129,7 @@ const NewsModal: React.FC<{
                                     type="checkbox"
                                     checked={formData.isPublished}
                                     onChange={e => setFormData({ ...formData, isPublished: e.target.checked })}
-                                />
+                                />{' '}
                                 Publicar noticia
                             </label>
                         </div>
@@ -139,7 +139,7 @@ const NewsModal: React.FC<{
                                     type="checkbox"
                                     checked={formData.isFeatured}
                                     onChange={e => setFormData({ ...formData, isFeatured: e.target.checked })}
-                                />
+                                />{' '}
                                 Destacar noticia
                             </label>
                         </div>

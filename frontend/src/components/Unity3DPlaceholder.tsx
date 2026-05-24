@@ -36,29 +36,29 @@ interface Noticia {
 const categoryConfig: Record<string, { color: string; icon: string }> = {
     DEPORTIVO: { color: '#66bb6a', icon: '⚽' },
     ACADEMICO: { color: '#42a5f5', icon: '📚' },
-    CULTURAL:  { color: '#ab47bc', icon: '🎭' },
-    SOCIAL:    { color: '#ffa726', icon: '🤝' },
-    OTRO:      { color: '#78909c', icon: '📌' },
+    CULTURAL: { color: '#ab47bc', icon: '🎭' },
+    SOCIAL: { color: '#ffa726', icon: '🤝' },
+    OTRO: { color: '#78909c', icon: '📌' },
 };
 
 const Unity3DPlaceholder: React.FC = () => {
-    const canvasRef    = useRef<HTMLCanvasElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const sessionId    = useRef(`session_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+    const sessionId = useRef(`session_${Date.now()}_${Math.random().toString(36).slice(2)}`);
 
-    const [loading,      setLoading]      = useState(true);
-    const [progress,     setProgress]     = useState(0);
-    const [error,        setError]        = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(0);
+    const [error, setError] = useState<string | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [cursorFree,   setCursorFree]   = useState(false);
+    const [cursorFree, setCursorFree] = useState(false);
 
-    const [currentPOI,      setCurrentPOI]      = useState<POIEvent | null>(null);
-    const [areaInfo,        setAreaInfo]         = useState<AreaInfo | null>(null);
-    const [eventos,         setEventos]          = useState<Evento[]>([]);
-    const [noticias,        setNoticias]         = useState<Noticia[]>([]);
-    const [tab,             setTab]              = useState<'eventos' | 'noticias'>('eventos');
-    const [expandedEventId, setExpandedEventId]  = useState<number | null>(null);
-    const [expandedNewsId,  setExpandedNewsId]   = useState<number | null>(null);
+    const [currentPOI, setCurrentPOI] = useState<POIEvent | null>(null);
+    const [areaInfo, setAreaInfo] = useState<AreaInfo | null>(null);
+    const [eventos, setEventos] = useState<Evento[]>([]);
+    const [noticias, setNoticias] = useState<Noticia[]>([]);
+    const [tab, setTab] = useState<'eventos' | 'noticias'>('eventos');
+    const [expandedEventId, setExpandedEventId] = useState<number | null>(null);
+    const [expandedNewsId, setExpandedNewsId] = useState<number | null>(null);
 
     // ── Fullscreen ────────────────────────────────────────────────
     useEffect(() => {
@@ -101,9 +101,9 @@ const Unity3DPlaceholder: React.FC = () => {
     const formatHora = (time: string): string => {
         if (!time) return '';
         const [h, m] = time.split(':');
-        const hour   = parseInt(h);
-        const ampm   = hour >= 12 ? 'PM' : 'AM';
-        const h12    = hour % 12 || 12;
+        const hour = parseInt(h);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const h12 = hour % 12 || 12;
         return `${h12}:${m} ${ampm}`;
     };
 
@@ -111,11 +111,11 @@ const Unity3DPlaceholder: React.FC = () => {
     const trackPOIVisit = useCallback(async (poiId: number, poiName: string) => {
         try {
             await api.post('/statistics/track', {
-                eventType:  'poi_visit',
+                eventType: 'poi_visit',
                 entityType: 'point_of_interest',
-                entityId:   poiId,
-                sessionId:  sessionId.current,
-                metadata:   { poiName },
+                entityId: poiId,
+                sessionId: sessionId.current,
+                metadata: { poiName },
             });
         } catch { /* no crítico */ }
     }, []);
@@ -216,8 +216,8 @@ const Unity3DPlaceholder: React.FC = () => {
     useEffect(() => {
         window.addEventListener('unityToReact', handleUnityEvent as any);
 
-        const script   = document.createElement('script');
-        script.src     = '/unity-build/Build/webgl-build.loader.js';
+        const script = document.createElement('script');
+        script.src = '/unity-build/Build/webgl-build.loader.js';
         script.onerror = () =>
             setError('No se encontró el build de Unity. Verifica los archivos en /public/unity-build/Build/');
 
@@ -228,21 +228,21 @@ const Unity3DPlaceholder: React.FC = () => {
                 setError('createUnityInstance no está disponible. Verifica el script de Unity.');
                 return;
             }
-            
+
             w.createUnityInstance(canvasRef.current, {
-                dataUrl:      '/unity-build/Build/webgl-build.data',
+                dataUrl: '/unity-build/Build/webgl-build.data',
                 frameworkUrl: '/unity-build/Build/webgl-build.framework.js',
-                codeUrl:      '/unity-build/Build/webgl-build.wasm',
+                codeUrl: '/unity-build/Build/webgl-build.wasm',
             }, (p: number) => setProgress(Math.round(p * 100)))
-            .then((instance: any) => {
-                w.unityInstance = instance;
-                setLoading(false);
-                console.log('🎮 Unity WebGL cargado');
-                unity3dService.getWorldData()
-                    .then(worldData => instance.SendMessage('WebGLBridge', 'ReceiveNewsData', JSON.stringify(worldData)))
-                    .catch(() => {});
-            })
-            .catch((err: any) => setError('Error inicializando Unity: ' + err.message));
+                .then((instance: any) => {
+                    w.unityInstance = instance;
+                    setLoading(false);
+                    console.log('🎮 Unity WebGL cargado');
+                    unity3dService.getWorldData()
+                        .then(worldData => instance.SendMessage('WebGLBridge', 'ReceiveNewsData', JSON.stringify(worldData)))
+                        .catch(() => { });
+                })
+                .catch((err: any) => setError('Error inicializando Unity: ' + err.message));
         };
 
         document.body.appendChild(script);
@@ -340,14 +340,14 @@ const Unity3DPlaceholder: React.FC = () => {
                             className={`unity-poi-tab${tab === 'eventos' ? ' active' : ''}`}
                             onClick={() => setTab('eventos')}
                         >
-                            📅 Eventos
+                            📅 Eventos{' '}
                             <span className="unity-tab-badge">{eventos.length}</span>
                         </button>
                         <button
                             className={`unity-poi-tab${tab === 'noticias' ? ' active' : ''}`}
                             onClick={() => setTab('noticias')}
                         >
-                            📰 Noticias
+                            📰 Noticias{' '}
                             <span className="unity-tab-badge">{noticias.length}</span>
                         </button>
                     </div>
@@ -362,11 +362,11 @@ const Unity3DPlaceholder: React.FC = () => {
                                 </div>
                             ) : (
                                 eventos.map(e => {
-                                    const cfg      = categoryConfig[e.category] || categoryConfig.OTRO;
+                                    const cfg = categoryConfig[e.category] || categoryConfig.OTRO;
                                     const expanded = expandedEventId === e.id;
-                                    const fecha    = formatFecha(e.eventDate);
-                                    const hIni     = formatHora(e.startTime);
-                                    const hFin     = formatHora(e.endTime);
+                                    const fecha = formatFecha(e.eventDate);
+                                    const hIni = formatHora(e.startTime);
+                                    const hFin = formatHora(e.endTime);
 
                                     return (
                                         <div key={e.id} className={`unity-event-card${expanded ? ' unity-event-card--expanded' : ''}`}>
@@ -389,7 +389,7 @@ const Unity3DPlaceholder: React.FC = () => {
                                                     {expanded
                                                         ? e.description
                                                         : e.description.slice(0, 60) +
-                                                          (e.description.length > 60 ? '...' : '')}
+                                                        (e.description.length > 60 ? '...' : '')}
                                                 </div>
                                             )}
 
@@ -447,7 +447,7 @@ const Unity3DPlaceholder: React.FC = () => {
                                                 {expanded
                                                     ? n.content
                                                     : (n.content?.slice(0, 80) +
-                                                       ((n.content?.length ?? 0) > 80 ? '...' : ''))}
+                                                        ((n.content?.length ?? 0) > 80 ? '...' : ''))}
                                             </div>
                                             {expanded && n.createdAt && (
                                                 <div className="unity-news-date">

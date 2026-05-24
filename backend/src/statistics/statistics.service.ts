@@ -43,7 +43,7 @@ export class StatisticsService {
         return {
             totalViews,
             pointClicks,
-            uniqueSessions: parseInt(uniqueSessions?.count || '0'),
+            uniqueSessions: Number.parseInt(uniqueSessions?.count || '0'),
             topPoints,
         };
     }
@@ -71,7 +71,7 @@ export class StatisticsService {
                 return {
                     areaId: poi?.id || row.pointId,
                     areaName: poi?.title || `POI #${row.pointId}`,
-                    visitCount: parseInt(row.visitCount),
+                    visitCount: Number.parseInt(row.visitCount),
                     percentage: 0,
                 };
             })
@@ -101,7 +101,7 @@ export class StatisticsService {
             date: r.date instanceof Date
                 ? r.date.toISOString().split('T')[0]
                 : String(r.date),
-            visits: parseInt(r.visits),
+            visits: Number.parseInt(r.visits),
         }));
     }
 
@@ -113,7 +113,7 @@ export class StatisticsService {
             .where('stat.createdAt >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)')
             .getRawOne();
 
-        return { activeNow: parseInt(raw?.count || '0') };
+        return { activeNow: Number.parseInt(raw?.count || '0') };
     }
 
     async getRecentActivity(limit = 50) {
@@ -122,38 +122,38 @@ export class StatisticsService {
             take: limit,
         });
     }
-async getViewsSummary() {
-    const eventViews = await this.statisticRepository
-        .createQueryBuilder('stat')
-        .select('stat.entityId', 'entityId')
-        .addSelect('COUNT(DISTINCT stat.sessionId)', 'views')
-        .where('stat.eventType = :type', { type: 'content_view' })
-        .andWhere('stat.entityType = :entity', { entity: 'event' })
-        .groupBy('stat.entityId')
-        .orderBy('views', 'DESC')
-        .limit(20)
-        .getRawMany();
+    async getViewsSummary() {
+        const eventViews = await this.statisticRepository
+            .createQueryBuilder('stat')
+            .select('stat.entityId', 'entityId')
+            .addSelect('COUNT(DISTINCT stat.sessionId)', 'views')
+            .where('stat.eventType = :type', { type: 'content_view' })
+            .andWhere('stat.entityType = :entity', { entity: 'event' })
+            .groupBy('stat.entityId')
+            .orderBy('views', 'DESC')
+            .limit(20)
+            .getRawMany();
 
-    const newsViews = await this.statisticRepository
-        .createQueryBuilder('stat')
-        .select('stat.entityId', 'entityId')
-        .addSelect('COUNT(DISTINCT stat.sessionId)', 'views')
-        .where('stat.eventType = :type', { type: 'content_view' })
-        .andWhere('stat.entityType = :entity', { entity: 'news' })
-        .groupBy('stat.entityId')
-        .orderBy('views', 'DESC')
-        .limit(20)
-        .getRawMany();
+        const newsViews = await this.statisticRepository
+            .createQueryBuilder('stat')
+            .select('stat.entityId', 'entityId')
+            .addSelect('COUNT(DISTINCT stat.sessionId)', 'views')
+            .where('stat.eventType = :type', { type: 'content_view' })
+            .andWhere('stat.entityType = :entity', { entity: 'news' })
+            .groupBy('stat.entityId')
+            .orderBy('views', 'DESC')
+            .limit(20)
+            .getRawMany();
 
-    return {
-        events: eventViews.map(r => ({
-            entityId: parseInt(r.entityId),
-            views:    parseInt(r.views),
-        })),
-        news: newsViews.map(r => ({
-            entityId: parseInt(r.entityId),
-            views:    parseInt(r.views),
-        })),
-    };
-}
+        return {
+            events: eventViews.map(r => ({
+                entityId: Number.parseInt(r.entityId),
+                views: Number.parseInt(r.views),
+            })),
+            news: newsViews.map(r => ({
+                entityId: Number.parseInt(r.entityId),
+                views: Number.parseInt(r.views),
+            })),
+        };
+    }
 }
