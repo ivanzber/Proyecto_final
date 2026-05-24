@@ -14,7 +14,6 @@ const password = process.env.ADMIN_PASSWORD;
 
 if (!password) {
   console.error('ERROR: Debes proporcionar la contraseña como variable de entorno ADMIN_PASSWORD.');
-  console.error('Ejemplo: ADMIN_PASSWORD=TuContraseña node generate-hash.js');
   process.exit(1);
 }
 

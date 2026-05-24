@@ -14,7 +14,7 @@ const hash = process.env.ADMIN_HASH;
 
 if (!password || !hash) {
   console.error('ERROR: Debes proporcionar ADMIN_PASSWORD y ADMIN_HASH como variables de entorno.');
-  console.error('Ejemplo: ADMIN_PASSWORD=TuContraseña ADMIN_HASH=<bcrypt_hash> node verify-hash.js');
+
   process.exit(1);
 }
 

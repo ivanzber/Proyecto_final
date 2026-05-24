@@ -15,6 +15,7 @@ logs/
 # Database
 *.sql.backup
 backup/
+seeds_mysql.sql
 
 # IDE
 .vscode/
