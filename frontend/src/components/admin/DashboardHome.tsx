@@ -88,28 +88,44 @@ const DashboardHome: React.FC = () => {
         try {
             setLoading(true);
 
-            const [users, areas, points, events, news] = await Promise.all([
+            // Cada petición es independiente para que un fallo no anule todo
+            const [usersRes, areas, points, events, news] = await Promise.allSettled([
                 usersService.getAll(),
                 areasService.getAll(),
                 pointsService.getAll(),
-                eventsService.getAll(),
+                eventsService.getAllAdmin(),   // ← todos los eventos, no solo futuros
                 newsService.getAll(),
             ]);
 
+            const users  = usersRes.status  === 'fulfilled' ? usersRes.value  : [];
+            const areasV = areas.status     === 'fulfilled' ? areas.value     : [];
+            const pointsV= points.status    === 'fulfilled' ? points.value    : [];
+            const eventsV= events.status    === 'fulfilled' ? events.value    : [];
+            const newsV  = news.status      === 'fulfilled' ? news.value      : [];
+
+            const isEventInPast = (e: any): boolean => {
+                if (!e.eventDate) return false;
+                const timeToUse = e.endTime || e.startTime;
+                const timeStr = timeToUse && timeToUse.length >= 5 ? timeToUse.substring(0, 5) : '23:59';
+                const eventDateTime = new Date(`${String(e.eventDate).split('T')[0]}T${timeStr}:00`);
+                return eventDateTime < new Date();
+            };
+            const upcomingEventsV = eventsV.filter((e: any) => !isEventInPast(e));
+
             const dashStats: DashboardStats = {
                 totalUsers: users.length,
-                totalAreas: areas.length,
-                totalPoints: points.length,
-                totalEvents: events.length,
-                totalNews: news.length,
-                activeUsers: users.filter((u: any) => u.isActive).length,
-                publishedEvents: events.filter((e: any) => e.isPublished).length,
-                publishedNews: news.filter((n: any) => n.isPublished).length,
+                totalAreas: areasV.length,
+                totalPoints: pointsV.length,
+                totalEvents: upcomingEventsV.length,
+                totalNews: newsV.length,
+                activeUsers: (users as any[]).filter((u: any) => u.isActive).length,
+                publishedEvents: upcomingEventsV.filter((e: any) => e.isPublished).length,
+                publishedNews: newsV.filter((n: any) => n.isPublished).length,
             };
             setStats(dashStats);
             statsRef.current = dashStats;
 
-            const sortedEvents = [...events]
+            const sortedEvents = [...upcomingEventsV]
                 .sort((a: any, b: any) =>
                     new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()
                 )
@@ -117,7 +133,7 @@ const DashboardHome: React.FC = () => {
             setRecentEvents(sortedEvents);
             recentEventsRef.current = sortedEvents;
 
-            const sortedNews = [...news]
+            const sortedNews = [...newsV]
                 .sort((a: any, b: any) =>
                     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                 )
@@ -126,12 +142,17 @@ const DashboardHome: React.FC = () => {
             recentNewsRef.current = sortedNews;
 
             try {
-                const [areasData, visitsData, activeData, viewsData] = await Promise.all([
+                const [areasRes, visitsRes, activeRes, viewsRes] = await Promise.allSettled([
                     statisticsService.getMostVisitedAreas(8),
                     statisticsService.getVisitsByDate(7),
                     api.get('/statistics/active-users'),
                     api.get('/statistics/views/summary'),
                 ]);
+
+                const areasData = areasRes.status === 'fulfilled' ? areasRes.value : [];
+                const visitsData = visitsRes.status === 'fulfilled' ? visitsRes.value : [];
+                const activeData = activeRes.status === 'fulfilled' ? activeRes.value : { data: { activeNow: 0 } };
+                const viewsData = viewsRes.status === 'fulfilled' ? viewsRes.value : { data: { events: [], news: [] } };
 
                 const normalizedVisits: VisitsByDate[] = (visitsData || []).map((v: any) => ({
                     date: v.date instanceof Date
@@ -144,7 +165,7 @@ const DashboardHome: React.FC = () => {
 
                 const areasFinal = areasData.length > 0
                     ? areasData
-                    : areas.slice(0, 8).map((a: any) => ({
+                    : areasV.slice(0, 8).map((a: any) => ({
                         areaId: a.id, areaName: a.name, visitCount: 0, percentage: 0,
                     }));
 
@@ -160,8 +181,9 @@ const DashboardHome: React.FC = () => {
                 setViewsSummary(views);
                 viewsSummaryRef.current = views;
 
-            } catch {
-                const fallbackAreas = areas.slice(0, 8).map((a: any) => ({
+            } catch (error) {
+                console.error('Error fetching deep stats:', error);
+                const fallbackAreas = areasV.slice(0, 8).map((a: any) => ({
                     areaId: a.id, areaName: a.name, visitCount: 0, percentage: 0,
                 }));
                 setMostVisitedAreas(fallbackAreas);
@@ -425,7 +447,7 @@ const DashboardHome: React.FC = () => {
                         );
                     }
 
-                    // Tarjeta SIN navegación → <div> sin onClick (sin warning ✅)
+                    // Tarjeta SIN navegación → <div> sin onClick (sin warning )
                     return (
                         <div key={c.label} className="stat-card">
                             {inner}

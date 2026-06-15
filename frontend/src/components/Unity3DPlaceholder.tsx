@@ -178,9 +178,16 @@ const Unity3DPlaceholder: React.FC = () => {
                 const realPoiId = poi.id;
                 trackPOIVisit(realPoiId, poi.title);
 
-                // Cargar eventos activos (el backend filtra los expirados)
-                const eventosRes = await api.get(`/events?pointOfInterestId=${realPoiId}`);
-                setEventos(eventosRes.data || []);
+                // Cargar eventos activos: buscar por POI *y* por el área del POI
+                // (eventos creados por admin usan pointOfInterestId, por subadmin usan areaId)
+                const poiAreaId = poi.areaId;
+                let evUrl = `/events?pointOfInterestId=${realPoiId}`;
+                if (poiAreaId) evUrl += `&poiAreaId=${poiAreaId}`;
+                const eventosRes = await api.get(evUrl);
+                // Deduplicar por id por si acaso
+                const eventosMap = new Map<number, Evento>();
+                (eventosRes.data || []).forEach((e: Evento) => eventosMap.set(e.id, e));
+                setEventos(Array.from(eventosMap.values()));
 
                 // Cargar área y noticias
                 if (poi.areaCode) {

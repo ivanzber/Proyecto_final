@@ -44,6 +44,7 @@ export class Unity3DService {
             category: point.category,
             coordinates: point.coordinates,
             areaCode: point.area.code,
+            areaId: point.areaId,
             iconUrl: point.iconUrl,
         }));
     }

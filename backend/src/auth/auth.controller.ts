@@ -44,11 +44,7 @@ export class AuthController {
         }
     }
 
-    /**
-     * Endpoint de login en texto plano.
-     * ⚠️ SOLO DISPONIBLE EN DESARROLLO (NODE_ENV=development)
-     * Úsalo con Postman / Swagger para obtener el token JWT fácilmente.
-     */
+
     @Post('login-dev')
     @ApiOperation({
         summary: '⚙️ Login para desarrollo (solo cuando NODE_ENV=development)',

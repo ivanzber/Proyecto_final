@@ -3,6 +3,16 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# ✅ Declarar ARGs para que Vite los use durante el build
+ARG VITE_API_URL
+ARG VITE_ENCRYPTION_KEY
+ARG VITE_APP_NAME=Campus Virtual UDEC
+
+# ✅ Exportar como variables de entorno para que Vite las lea
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_ENCRYPTION_KEY=$VITE_ENCRYPTION_KEY
+ENV VITE_APP_NAME=$VITE_APP_NAME
+
 # Copy package files first for better layer caching
 COPY package*.json ./
 

@@ -2,18 +2,15 @@ import * as crypto from 'crypto';
 
 const ALGORITHM = 'aes-256-cbc';
 
-/**
- * Descifra un payload cifrado con AES-256-CBC.
- * El payload cifrado contiene IV (primeros 16 bytes) + datos cifrados, todo en Base64.
- */
+
 export function decryptPayload(encryptedPayload: string, encryptionKey: string): string {
     const encryptedBuffer = Buffer.from(encryptedPayload, 'base64');
 
-    // Los primeros 16 bytes son el IV
+   
     const iv = encryptedBuffer.subarray(0, 16);
     const encryptedData = encryptedBuffer.subarray(16);
 
-    // La clave debe ser de 32 bytes (256 bits)
+    
     const key = Buffer.from(encryptionKey, 'hex');
 
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);

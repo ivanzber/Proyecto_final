@@ -37,7 +37,7 @@ const Modal: React.FC<{
                     cursor: 'default', width: '100%', height: '100%',
                 }}
             />
-            {/* ✅ Sin onKeyDown — el role="dialog" solo declara semántica */}
+            {/*  Sin onKeyDown — el role="dialog" solo declara semántica */}
             <div
                 role="dialog"
                 aria-modal="true"

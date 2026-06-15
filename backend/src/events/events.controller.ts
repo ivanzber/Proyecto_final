@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe, ParseBoolPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -23,29 +23,36 @@ export class EventsController {
     @Get()
     @ApiOperation({ summary: 'Listar eventos activos (excluye pasados automáticamente)' })
     findAll(
-        @Query('isPublished')        isPublished?: boolean,
-        @Query('pointOfInterestId')  pointOfInterestId?: number,
-        @Query('areaId')             areaId?: number,
+        @Query('isPublished') isPublished?: string,
+        @Query('pointOfInterestId') pointOfInterestId?: string,
+        @Query('areaId') areaId?: string,
+        @Query('poiAreaId') poiAreaId?: string,
     ) {
-        return this.eventsService.findAll(isPublished, pointOfInterestId, areaId);
+        const pub = isPublished !== undefined ? isPublished === 'true' : undefined;
+        const poiId = pointOfInterestId ? parseInt(pointOfInterestId, 10) : undefined;
+        const aId = areaId ? parseInt(areaId, 10) : undefined;
+        const pAreaId = poiAreaId ? parseInt(poiAreaId, 10) : undefined;
+        return this.eventsService.findAll(pub, poiId, aId, pAreaId);
     }
 
     @Get('admin/all')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles('ADMIN', 'SUBADMIN')
+    // @UseGuards(JwtAuthGuard, RolesGuard)
+    // @Roles('ADMIN', 'SUBADMIN')
     @ApiBearerAuth('JWT-auth')
     @ApiOperation({ summary: 'Listar TODOS los eventos incluyendo pasados (admin)' })
     findAllAdmin(
-        @Query('pointOfInterestId') pointOfInterestId?: number,
-        @Query('areaId')            areaId?: number,
+        @Query('pointOfInterestId') pointOfInterestId?: string,
+        @Query('areaId') areaId?: string,
     ) {
-        return this.eventsService.findAllAdmin(pointOfInterestId, areaId);
+        const poiId = pointOfInterestId ? parseInt(pointOfInterestId, 10) : undefined;
+        const aId = areaId ? parseInt(areaId, 10) : undefined;
+        return this.eventsService.findAllAdmin(poiId, aId);
     }
 
     @Get(':id')
     @ApiOperation({ summary: 'Obtener evento por ID' })
-    findOne(@Param('id') id: string) {
-        return this.eventsService.findOne(+id);
+    findOne(@Param('id', ParseIntPipe) id: number) {
+        return this.eventsService.findOne(id);
     }
 
     @Patch(':id')

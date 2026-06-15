@@ -41,20 +41,19 @@ export class AuthService {
             throw new UnauthorizedException('Credenciales inválidas');
         }
 
-        // Update last login
+      
         await this.userRepository.update(user.id, {
             lastLogin: new Date(),
         });
 
-        // Payload minimalista - solo el ID del usuario
-        // No incluir email, roleId ni roleName para evitar exposición de datos sensibles
+ 
         const payload = {
             sub: user.id,
         };
 
         const accessToken = this.jwtService.sign(payload);
 
-        // Solo devolver el token - los datos del usuario se obtienen vía /auth/profile
+
         return {
             accessToken,
         };
@@ -70,7 +69,7 @@ export class AuthService {
             throw new UnauthorizedException('Usuario no encontrado');
         }
 
-        // Devolver solo los datos necesarios, sin información sensible
+ 
         return {
             id: user.id,
             email: user.email,

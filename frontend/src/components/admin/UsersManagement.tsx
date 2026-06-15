@@ -21,7 +21,7 @@ const UserModal: React.FC<{
         firstName: user?.firstName || '',
         lastName: user?.lastName || '',
         password: '',
-        roleId: user?.roleId || 1,
+        roleId: user?.roleId || 3,
         isActive: user?.isActive ?? true,
     });
 
@@ -130,8 +130,8 @@ const UserModal: React.FC<{
                             onChange={e => setFormData({ ...formData, roleId: Number(e.target.value) })}
                             required
                         >
-                            <option value={2}>ADMIN</option>
                             <option value={3}>SUBADMIN</option>
+                            <option value={2}>ADMIN</option>
                         </select>
                     </div>
                     <div className="form-group">

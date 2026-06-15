@@ -70,12 +70,24 @@ export const eventsService = {
         return response.data;
     },
 
-    // ── Historial: trae todos (incluyendo pasados) y filtra los anteriores a hoy
+    
+    async getAllAdmin(): Promise<Event[]> {
+        const response = await api.get<Event[]>('/events/admin/all');
+        return response.data;
+    },
+
     async getPast(): Promise<Event[]> {
         const response = await api.get<Event[]>('/events/admin/all');
         const now = new Date();
         return response.data
-            .filter(e => new Date(e.eventDate) < now)
+            .filter(e => {
+                if (!e.eventDate) return false;
+                const dateStr = String(e.eventDate).split('T')[0];
+                const timeToUse = e.endTime || e.startTime;
+                const timeStr = timeToUse && timeToUse.length >= 5 ? timeToUse.substring(0, 5) : '23:59';
+                const eventDateTime = new Date(`${dateStr}T${timeStr}:00`);
+                return eventDateTime < now;
+            })
             .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
     },
 };

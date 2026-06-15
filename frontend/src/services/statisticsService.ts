@@ -41,7 +41,7 @@ export const statisticsService = {
     },
 
     async getVisitsByDate(days: number = 30): Promise<VisitsByDate[]> {
-        const response = await api.get(`/statistics/visits-by-date?days=${days}`);
+        const response = await api.get(`/statistics/visits/by-date?days=${days}`);
         return response.data;
     },
 

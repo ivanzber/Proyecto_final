@@ -19,13 +19,13 @@ const PointModal: React.FC<{
     onSave: () => void;
 }> = ({ point, areas, onClose, onSave }) => {
     const [formData, setFormData] = useState({
-        title:       point?.title       || '',
+        title: point?.title || '',
         description: point?.description || '',
-        areaId:      point?.areaId      || (areas[0]?.id ?? 0),
-        category:    point?.category    || '',
-        isVisible:   point?.isVisible   ?? true,
-        orderIndex:  point?.orderIndex  ?? 0,
-        iconUrl:     point?.iconUrl     || '',
+        areaId: point?.areaId || (areas[0]?.id ?? 0),
+        category: point?.category || '',
+        isVisible: point?.isVisible ?? true,
+        orderIndex: point?.orderIndex ?? 0,
+        iconUrl: point?.iconUrl || '',
     });
     const [saving, setSaving] = useState(false);
 
@@ -37,14 +37,14 @@ const PointModal: React.FC<{
         setSaving(true);
         try {
             const payload: CreatePointDto = {
-                title:       formData.title,
+                title: formData.title,
                 description: formData.description || undefined,
-                areaId:      Number(formData.areaId),
-                category:    formData.category    || undefined,
+                areaId: Number(formData.areaId),
+                category: formData.category || undefined,
                 coordinates: {},
-                isVisible:   formData.isVisible,
-                orderIndex:  Number(formData.orderIndex),
-                iconUrl:     formData.iconUrl      || undefined,
+                isVisible: formData.isVisible,
+                orderIndex: Number(formData.orderIndex),
+                iconUrl: formData.iconUrl || undefined,
             };
             if (point) {
                 await pointsService.update(point.id, payload);
@@ -152,16 +152,6 @@ const PointModal: React.FC<{
                                 min={0}
                             />
                         </div>
-                        <div className="form-group">
-                            <label htmlFor="pt-icon">URL Ícono</label>
-                            <input
-                                id="pt-icon"
-                                type="text"
-                                value={formData.iconUrl}
-                                onChange={e => setFormData({ ...formData, iconUrl: e.target.value })}
-                                placeholder="https://..."
-                            />
-                        </div>
                     </div>
                     <div className="form-group">
                         <label htmlFor="pt-visible" className="checkbox-label">
@@ -190,12 +180,12 @@ const PointModal: React.FC<{
 
 // ─── Main Component ───────────────────────────────────────────────────
 const PointsManagement: React.FC = () => {
-    const [points, setPoints]           = useState<PointOfInterest[]>([]);
-    const [areas, setAreas]             = useState<Area[]>([]);
-    const [loading, setLoading]         = useState(true);
-    const [showModal, setShowModal]     = useState(false);
+    const [points, setPoints] = useState<PointOfInterest[]>([]);
+    const [areas, setAreas] = useState<Area[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
     const [editingPoint, setEditingPoint] = useState<PointOfInterest | null>(null);
-    const [search, setSearch]           = useState('');
+    const [search, setSearch] = useState('');
 
     useEffect(() => { loadData(); }, []);
 

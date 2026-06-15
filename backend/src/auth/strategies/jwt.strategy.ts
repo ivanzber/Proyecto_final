@@ -20,14 +20,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         });
     }
 
-    /**
-     * Valida el token JWT consultando la base de datos.
-     * Solo recibe 'sub' (userId) del payload, y obtiene los datos actualizados del usuario.
-     * Esto garantiza que:
-     * - No se exponen datos sensibles en el JWT
-     * - Los cambios de rol aplican inmediatamente
-     * - Los usuarios desactivados pierden acceso al instante
-     */
     async validate(payload: any) {
         const user = await this.userRepository.findOne({
             where: { id: payload.sub, isActive: true },

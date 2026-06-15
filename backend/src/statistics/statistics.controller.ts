@@ -30,15 +30,19 @@ export class StatisticsController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
     @ApiBearerAuth('JWT-auth')
-    getMostVisitedAreas(@Query('limit') limit?: number) {
+    @ApiOperation({ summary: 'Obtener áreas más visitadas' })
+    getMostVisitedAreas(@Query('limit') limitStr?: string) {
+        const limit = limitStr ? parseInt(limitStr, 10) : undefined;
         return this.statisticsService.getMostVisitedAreas(limit || 8);
     }
 
-    @Get('visits-by-date')
+    @Get('visits/by-date')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
     @ApiBearerAuth('JWT-auth')
-    getVisitsByDate(@Query('days') days?: number) {
+    @ApiOperation({ summary: 'Obtener visitas por fecha (últimos X días)' })
+    getVisitsByDate(@Query('days') daysStr?: string) {
+        const days = daysStr ? parseInt(daysStr, 10) : undefined;
         return this.statisticsService.getVisitsByDate(days || 7);
     }
 
@@ -50,11 +54,13 @@ export class StatisticsController {
         return this.statisticsService.getActiveUsers();
     }
 
-    @Get('recent')
+    @Get('activity/recent')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ADMIN')
     @ApiBearerAuth('JWT-auth')
-    getRecent(@Query('limit') limit?: number) {
+    @ApiOperation({ summary: 'Obtener actividad reciente de usuarios' })
+    getRecent(@Query('limit') limitStr?: string) {
+        const limit = limitStr ? parseInt(limitStr, 10) : undefined;
         return this.statisticsService.getRecentActivity(limit);
     }
     @Post('view')

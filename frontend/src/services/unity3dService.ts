@@ -7,6 +7,7 @@ export interface Point3D {
     category: string;
     coordinates: { x: number; y: number; z: number };
     areaCode: string;
+    areaId?: number;
     iconUrl?: string;
 }
 
@@ -61,7 +62,7 @@ export const unity3dService = {
     },
 };
 
-// ← Sin createUnityInstance aquí
+
 declare global {
     interface Window {
         unityInstance?: any;

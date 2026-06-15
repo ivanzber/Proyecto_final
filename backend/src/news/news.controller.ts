@@ -21,9 +21,11 @@ export class NewsController {
     }
 
     @Get()
-    @ApiOperation({ summary: 'Listar noticias (público: solo publicadas)' })
-    findAll(@Query('isPublished') isPublished?: boolean, @Query('isFeatured') isFeatured?: boolean) {
-        return this.newsService.findAll(isPublished, isFeatured);
+    @ApiOperation({ summary: 'Listar noticias (público)' })
+    findAll(@Query('isPublished') isPublished?: string, @Query('isFeatured') isFeatured?: string) {
+        const pub = isPublished !== undefined ? isPublished === 'true' : undefined;
+        const feat = isFeatured !== undefined ? isFeatured === 'true' : undefined;
+        return this.newsService.findAll(pub, feat);
     }
 
     @Get(':id')

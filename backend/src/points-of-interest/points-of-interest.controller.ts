@@ -22,8 +22,10 @@ export class PointsOfInterestController {
 
     @Get()
     @ApiOperation({ summary: 'Listar puntos de interés (público)' })
-    findAll(@Query('areaId') areaId?: number, @Query('isVisible') isVisible?: boolean) {
-        return this.service.findAll({ areaId, isVisible });
+    findAll(@Query('areaId') areaId?: string, @Query('isVisible') isVisible?: string) {
+        const areaIdNum = areaId ? parseInt(areaId, 10) : undefined;
+        const isVisibleBool = isVisible !== undefined ? isVisible === 'true' : undefined;
+        return this.service.findAll({ areaId: areaIdNum, isVisible: isVisibleBool });
     }
 
     @Get(':id')
